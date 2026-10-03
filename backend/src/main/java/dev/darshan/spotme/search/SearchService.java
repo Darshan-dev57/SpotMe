@@ -1,0 +1,123 @@
+package dev.darshan.spotme.search;
+
+import dev.darshan.spotme.face.DetectedFace;
+import dev.darshan.spotme.face.FaceEngine;
+import dev.darshan.spotme.face.FaceEnginePool;
+import dev.darshan.spotme.face.Vectors;
+import dev.darshan.spotme.media.ImageProcessor;
+import org.opencv.core.Mat;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Selfie -> one face vector (kept only in memory) -> exact cosine search inside ONE event.
+ */
+@Service
+public class SearchService {
+
+    /** Why a selfie could not be used. The message is shown to the attendee. */
+    public static class BadSelfieException extends Exception {
+        private final String code;
+
+        public BadSelfieException(String code, String message) {
+            super(message);
+            this.code = code;
+        }
+
+        public String code() {
+            return code;
+        }
+    }
+
+    public record Match(UUID photoId, double distance) {
+    }
+
+    /** Timings in milliseconds, sent back in the Server-Timing header. */
+    public record Timings(double decode, double faces, double sql) {
+    }
+
+    public record Result(List<Match> matches, Timings timings) {
+    }
+
+    // a second face counts as "another person in the selfie" if it is at least this big compared with the largest
+    static final double SECOND_FACE_RATIO = 0.25;
+
+    private final ImageProcessor images;
+    private final FaceEnginePool engines;
+    private final JdbcTemplate jdbc;
+
+    public SearchService(ImageProcessor images, FaceEnginePool engines, JdbcTemplate jdbc) {
+        this.images = images;
+        this.engines = engines;
+        this.jdbc = jdbc;
+    }
+
+    public float[] selfieVector(byte[] selfie, long[] nanos) throws BadSelfieException {
+        long t0 = System.nanoTime();
+        Mat image;
+        try {
+            image = images.decode(selfie);
+        } catch (ImageProcessor.RejectedImageException e) {
+            throw new BadSelfieException(e.code(), e.getMessage());
+        }
+        long t1 = System.nanoTime();
+        List<DetectedFace> faces;
+        try {
+            faces = engines.use(engine -> engine.detectAndEmbed(image));
+        } finally {
+            image.release();
+        }
+        nanos[0] = t1 - t0;
+        nanos[1] = System.nanoTime() - t1;
+        return pickSingleFace(faces).embedding();
+    }
+
+    /** Exactly one clear face, otherwise we refuse instead of guessing whose photos to show. */
+    static DetectedFace pickSingleFace(List<DetectedFace> faces) throws BadSelfieException {
+        if (faces.isEmpty()) {
+            throw new BadSelfieException("no_face", "We couldn't find a face. Try a clearer, well-lit selfie.");
+        }
+        List<DetectedFace> sorted = faces.stream().sorted(Comparator.comparingInt(DetectedFace::area).reversed()).toList();
+        DetectedFace main = sorted.get(0);
+        if (sorted.size() > 1 && sorted.get(1).area() >= main.area() * SECOND_FACE_RATIO) {
+            throw new BadSelfieException("multiple_faces", "More than one face is in this photo. Use a selfie with only you.");
+        }
+        return main;
+    }
+
+    /**
+     * Exact (no index) nearest-photo search, always filtered to one event.
+     * A photo matches if ANY face in it is close enough; we return its best distance.
+     * Hidden, suppressed and "wrong match"-reported photos are left out.
+     */
+    public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit) {
+        return jdbc.query("""
+                SELECT f.photo_id, min(f.embedding <=> ?::vector) AS distance
+                FROM faces f
+                JOIN photos p ON p.id = f.photo_id
+                WHERE f.event_id = ? AND f.model_version = ?
+                  AND p.status = 'ready' AND p.hidden_at IS NULL AND p.suppressed_at IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM wrong_match_reports w WHERE w.photo_id = p.id AND w.membership_id = ?)
+                GROUP BY f.photo_id
+                HAVING min(f.embedding <=> ?::vector) <= ?
+                ORDER BY distance
+                LIMIT ?
+                """, (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getDouble(2)),
+                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, membershipId,
+                Vectors.toPgVector(query), maxDistance, limit);
+    }
+
+    public Result run(UUID eventId, UUID membershipId, byte[] selfie, double maxDistance, int limit)
+            throws BadSelfieException {
+        long[] nanos = new long[2];
+        float[] vector = selfieVector(selfie, nanos);
+        long t = System.nanoTime();
+        List<Match> matches = search(eventId, membershipId, vector, maxDistance, limit);
+        double sqlMs = (System.nanoTime() - t) / 1e6;
+        return new Result(matches, new Timings(nanos[0] / 1e6, nanos[1] / 1e6, sqlMs));
+    }
+}
