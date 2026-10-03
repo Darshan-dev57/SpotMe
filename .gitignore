@@ -1,0 +1,22 @@
+# build output
+backend/target/
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.log
+
+# local data, never commit photos or models
+models/*.onnx
+data/
+eval/data/
+eval/out/*.jpg
+.env
+.env.local
+web/.env.local
+
+# editors
+.idea/
+.vscode/
+*.iml
+.DS_Store

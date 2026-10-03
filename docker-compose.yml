@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: spotme-postgres
+    environment:
+      POSTGRES_DB: spotme
+      POSTGRES_USER: spotme
+      POSTGRES_PASSWORD: spotme
+    ports:
+      - "5434:5432"
+    volumes:
+      - spotme-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotme -d spotme"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  spotme-pgdata:
