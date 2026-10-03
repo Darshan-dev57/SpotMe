@@ -43,7 +43,7 @@ public class SessionService {
 
     /**
      * Looks the token up and re-checks the attendee's live access every time, so a
-     * withdrawn, revoked or expired membership stops working immediately.
+     * withdrawn, revoked or expired membership, or a changed notice, stops working immediately.
      */
     public Optional<Principal> resolve(String token) {
         List<Principal> rows = jdbc.query("""
@@ -54,6 +54,7 @@ public class SessionService {
                 WHERE s.token_hash = ? AND s.expires_at > now()
                   AND (s.organizer_id IS NOT NULL
                        OR (m.consented_at IS NOT NULL AND m.withdrawn_at IS NULL AND m.revoked_at IS NULL
+                           AND m.consent_notice_version = e.notice_version
                            AND e.status IN ('draft', 'published') AND e.expires_at > now()))
                 """, (rs, i) -> {
             UUID organizerId = rs.getObject("organizer_id", UUID.class);
