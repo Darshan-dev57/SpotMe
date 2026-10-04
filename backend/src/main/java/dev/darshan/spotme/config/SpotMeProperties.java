@@ -16,9 +16,10 @@ public record SpotMeProperties(
         Face face,
         Search search,
         Worker worker,
-        Eval eval) {
+        Eval eval,
+        Demo demo) {
 
-    public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide) {
+    public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide, int maxPhotosPerEvent) {
     }
 
     /** Detector settings. maxSide: photos are scaled so the long side is at most this many pixels. */
@@ -27,7 +28,7 @@ public record SpotMeProperties(
 
     /**
      * maxDistance is a pgvector cosine distance (1 - cosine similarity).
-     * It was picked from the accuracy harness, see docs/MEASUREMENTS.md.
+     * It was picked from the accuracy harness, see docs/ARCHITECTURE.md.
      */
     public record Search(double maxDistance, int maxResults, int perMinuteLimit, Duration mediaLinkTtl) {
     }
@@ -38,5 +39,12 @@ public record SpotMeProperties(
 
     /** The evaluation endpoint returns raw distances, so it is off unless the eval profile turns it on. */
     public record Eval(boolean enabled) {
+    }
+
+    /**
+     * The public demo: a published event filled from photosDir that any visitor can join.
+     * invitesPerMinute limits demo invites per IP address.
+     */
+    public record Demo(boolean enabled, String photosDir, int invitesPerMinute) {
     }
 }

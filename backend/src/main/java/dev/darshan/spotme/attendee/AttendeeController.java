@@ -82,6 +82,7 @@ public class AttendeeController {
         out.put("published", "published".equals(m.get("status")));
         out.put("invitedAs", m.get("label"));
         out.put("withdrawn", m.get("withdrawn_at") != null);
+        out.put("demo", Boolean.TRUE.equals(m.get("demo")));
         return out;
     }
 
@@ -223,7 +224,7 @@ public class AttendeeController {
     private Map<String, Object> membershipByInvite(String token) {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT m.id, m.label, m.withdrawn_at, e.title, e.purpose_notice, e.notice_version, e.expires_at,
-                       e.status, o.display_name AS organizer
+                       e.status, e.demo, o.display_name AS organizer
                 FROM memberships m JOIN events e ON e.id = m.event_id JOIN organizers o ON o.id = e.organizer_id
                 WHERE m.invite_token_hash = ? AND m.revoked_at IS NULL
                   AND e.status IN ('draft', 'published') AND e.expires_at > now()
