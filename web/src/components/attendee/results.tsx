@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Download, Flag, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Download, Expand, Flag, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { PhotoViewer } from "@/components/attendee/photo-viewer";
 import { Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -32,6 +33,7 @@ export function Results({
   const [mode, setMode] = useState<Mode>("browse");
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [viewing, setViewing] = useState<number | null>(null);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -154,6 +156,14 @@ export function Results({
                     )}
                     {mode === "browse" && (
                       <div className="absolute right-1.5 bottom-1.5 flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setViewing(i)}
+                          className="flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm"
+                          aria-label="View larger"
+                        >
+                          <Expand className="size-4" />
+                        </button>
                         <a
                           href={mediaUrl(p.downloadUrl)}
                           className="flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm"
@@ -230,6 +240,9 @@ export function Results({
           </Button>
         )}
       </div>
+      {viewing !== null && (
+        <PhotoViewer photos={photos} index={viewing} onIndex={setViewing} onClose={() => setViewing(null)} />
+      )}
     </section>
   );
 }
