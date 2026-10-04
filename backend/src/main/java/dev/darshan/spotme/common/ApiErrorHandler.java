@@ -1,8 +1,12 @@
 package dev.darshan.spotme.common;
 
+import dev.darshan.spotme.config.SpotMeProperties;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -14,6 +18,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 /** Every error leaves the API in the same small JSON shape. */
@@ -21,6 +27,12 @@ import java.util.Map;
 public class ApiErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiErrorHandler.class);
+
+    private final SpotMeProperties props;
+
+    public ApiErrorHandler(SpotMeProperties props) {
+        this.props = props;
+    }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, String>> api(ApiException e) {
@@ -54,8 +66,18 @@ public class ApiErrorHandler {
         return body(HttpStatus.BAD_REQUEST, "invalid_request", "The request body could not be read.");
     }
 
+    /** Unknown API routes get JSON; unknown pages get the web UI's own 404 page when it is served. */
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<Map<String, String>> noRoute(NoResourceFoundException e) {
+    public ResponseEntity<?> noRoute(NoResourceFoundException e, HttpServletRequest request) {
+        boolean pageRequest = !request.getRequestURI().startsWith("/api/");
+        String webDir = props.webDir();
+        if (pageRequest && webDir != null && !webDir.isBlank()) {
+            Path notFoundPage = Path.of(webDir, "404.html");
+            if (Files.isRegularFile(notFoundPage)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(MediaType.TEXT_HTML)
+                        .body(new FileSystemResource(notFoundPage));
+            }
+        }
         return body(HttpStatus.NOT_FOUND, "not_found", "Not found.");
     }
 
