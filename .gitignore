@@ -3,6 +3,7 @@ backend/target/
 web/node_modules/
 web/.next/
 web/out/
+deploy/out/
 web/next-env.d.ts
 *.log
 
