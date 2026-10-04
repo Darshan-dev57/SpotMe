@@ -1,0 +1,65 @@
+{
+ "vectors": 100000,
+ "events": 200,
+ "k": 10,
+ "queries": 200,
+ "load_seconds": 4.5,
+ "hnsw_build_seconds": 50.8,
+ "hnsw_index_mb": 83.1,
+ "table_mb": 58.5,
+ "plan_exact_event_filtered": [
+  "Limit  (cost=63.97..64.00 rows=10 width=12)",
+  "  ->  Sort  (cost=63.97..65.21 rows=497 width=12)",
+  "        Sort Key: ((embedding <=> '[...]'::vector))",
+  "        ->  Index Scan using faces_event_id_idx on faces  (cost=0.29..53.23 rows=497 width=12)",
+  "              Index Cond: (event_id = 156)"
+ ],
+ "exact_event_filtered": {
+  "p50_ms": 0.63,
+  "p95_ms": 0.82,
+  "recall_at_10": 1.0,
+  "avg_results": 10
+ },
+ "exact_whole_table": {
+  "p50_ms": 22.7,
+  "p95_ms": 28.11,
+  "recall_at_10": 1.0,
+  "avg_results": 10
+ },
+ "hnsw_whole_table_ef40": {
+  "p50_ms": 1.84,
+  "p95_ms": 2.76,
+  "recall_at_10": 0.684,
+  "avg_results": 10
+ },
+ "hnsw_whole_table_ef100": {
+  "p50_ms": 2.93,
+  "p95_ms": 3.59,
+  "recall_at_10": 0.79,
+  "avg_results": 10
+ },
+ "hnsw_whole_table_ef200": {
+  "p50_ms": 5.01,
+  "p95_ms": 6.91,
+  "recall_at_10": 0.875,
+  "avg_results": 10
+ },
+ "hnsw_event_filtered_post_filter": {
+  "p50_ms": 2.1,
+  "p95_ms": 4.55,
+  "recall_at_10": 0.411,
+  "avg_results": 4.12
+ },
+ "plan_hnsw_event_filtered": [
+  "Limit  (cost=284.15..1710.17 rows=10 width=12)",
+  "  ->  Index Scan using bench_hnsw on faces  (cost=284.15..71157.24 rows=497 width=12)",
+  "        Order By: (embedding <=> '[...]'::vector)",
+  "        Filter: (event_id = 156)"
+ ],
+ "hnsw_event_filtered_iterative_scan": {
+  "p50_ms": 24.16,
+  "p95_ms": 36.26,
+  "recall_at_10": 0.824,
+  "avg_results": 10
+ }
+}
