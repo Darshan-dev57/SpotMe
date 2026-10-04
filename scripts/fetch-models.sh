@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Downloads the two face models from the OpenCV Zoo at a pinned commit and checks their SHA-256.
+# Usage: scripts/fetch-models.sh [target-dir]   (default: models/ in the repo)
 # YuNet (face detection) is MIT licensed, SFace (face recognition) is Apache 2.0.
 set -euo pipefail
 
 ZOO_COMMIT=47534e27c9851bb1128ccc0102f1145e27f23f98
 BASE="https://media.githubusercontent.com/media/opencv/opencv_zoo/${ZOO_COMMIT}/models"
-DIR="$(cd "$(dirname "$0")/.." && pwd)/models"
+DIR="${1:-$(cd "$(dirname "$0")/.." && pwd)/models}"
 mkdir -p "$DIR"
 
 fetch() {
