@@ -143,6 +143,7 @@ export type Notice = {
   published: boolean;
   invitedAs: string;
   withdrawn: boolean;
+  demo: boolean;
 };
 
 export type Match = { id: string; thumbUrl: string; downloadUrl: string };
