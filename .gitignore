@@ -10,7 +10,8 @@ web/next-env.d.ts
 models/*.onnx
 data/
 eval/data/
-eval/out/*.jpg
+eval/out/state.json
+eval/out/accuracy_raw.json
 .env
 .env.local
 web/.env.local

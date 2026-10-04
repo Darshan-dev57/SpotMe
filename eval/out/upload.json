@@ -1,0 +1,7 @@
+{
+ "photos": 438,
+ "seconds": 6.91,
+ "photos_per_min": 3805.7,
+ "request_ms_p50": 58.4,
+ "request_ms_p95": 93.6
+}

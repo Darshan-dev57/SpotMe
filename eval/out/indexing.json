@@ -1,0 +1,58 @@
+{
+ "index_throughput": [
+  {
+   "label": "default",
+   "threads": 2,
+   "opencv_threads": 2,
+   "photos": 438,
+   "faces": 807,
+   "seconds": 45.0,
+   "photos_per_min": 582.4,
+   "worker_rss_peak": "682772 kB"
+  },
+  {
+   "label": "1x1",
+   "threads": 1,
+   "opencv_threads": 1,
+   "photos": 438,
+   "faces": 807,
+   "seconds": 117.0,
+   "photos_per_min": 224.2,
+   "worker_rss_peak": "467616 kB",
+   "loadavg": "2.22"
+  },
+  {
+   "label": "1x4",
+   "threads": 1,
+   "opencv_threads": 4,
+   "photos": 438,
+   "faces": 807,
+   "seconds": 64.6,
+   "photos_per_min": 405.7,
+   "worker_rss_peak": "476564 kB",
+   "loadavg": "3.07"
+  },
+  {
+   "label": "4x1",
+   "threads": 4,
+   "opencv_threads": 1,
+   "photos": 438,
+   "faces": 807,
+   "seconds": 35.9,
+   "photos_per_min": 730.8,
+   "worker_rss_peak": "1111164 kB",
+   "loadavg": "4.64"
+  }
+ ],
+ "crash_recovery": {
+  "killed_after_ready": 203,
+  "inflight_jobs_at_kill": 2,
+  "ready": "438",
+  "faces": "807",
+  "duplicate_face_rows": "0",
+  "jobs": "succeeded:438",
+  "jobs_with_2_attempts": "2",
+  "seconds_restart_to_drained": 60.4,
+  "lease": "60s"
+ }
+}
