@@ -44,6 +44,9 @@ public class EventController {
     public record InviteRequest(@NotBlank @Size(max = 60) String label) {
     }
 
+    public record NoticeRequest(@NotBlank @Size(max = 1000) String purposeNotice) {
+    }
+
     private final JdbcTemplate jdbc;
     private final EventAccess access;
     private final PurgeService purge;
@@ -113,6 +116,20 @@ public class EventController {
                 "SELECT count(*) FROM removal_requests WHERE event_id = ? AND status IN ('received', 'approved')", Long.class, id));
         event.put("worker", workerStatus());
         return event;
+    }
+
+    /**
+     * Changing the notice bumps its version. Attendees agreed to the old text, so their
+     * sessions stop working until they read and accept the new one.
+     */
+    @PostMapping("/{id}/notice")
+    public Map<String, Object> updateNotice(@PathVariable UUID id, @Valid @RequestBody NoticeRequest req,
+                                            HttpServletRequest http) {
+        access.requireOwner(id, http);
+        access.requireLive(id);
+        jdbc.update("UPDATE events SET purpose_notice = ?, notice_version = notice_version + 1 WHERE id = ?",
+                req.purposeNotice().trim(), id);
+        return get(id, http);
     }
 
     @PostMapping("/{id}/publish")
@@ -223,30 +240,33 @@ public class EventController {
     @GetMapping("/{id}/removals")
     public List<Map<String, Object>> removals(@PathVariable UUID id, HttpServletRequest http) {
         UUID organizerId = access.requireOwner(id, http);
-        List<Map<String, Object>> rows = jdbc.queryForList("""
+        List<Map<String, Object>> requests = jdbc.queryForList("""
                 SELECT r.id, r.status, r.note, r.created_at AS "createdAt", r.decided_at AS "decidedAt",
-                       r.completed_at AS "completedAt", m.label AS "requestedBy", r.photo_ids
+                       r.completed_at AS "completedAt", m.label AS "requestedBy"
                 FROM removal_requests r LEFT JOIN memberships m ON m.id = r.membership_id
                 WHERE r.event_id = ? ORDER BY r.created_at DESC
                 """, id);
-        List<Map<String, Object>> out = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            UUID[] ids = (UUID[]) toArray(row.remove("photo_ids"));
-            List<Map<String, Object>> photos = new ArrayList<>();
-            for (UUID pid : ids) {
-                Map<String, Object> p = new LinkedHashMap<>();
-                p.put("id", pid);
-                String st = jdbc.queryForObject("SELECT status FROM photos WHERE id = ?", String.class, pid);
-                p.put("status", st);
-                if (!"purged".equals(st)) {
-                    p.put("thumbUrl", signer.link(pid, "thumb", "o:" + organizerId));
-                }
-                photos.add(p);
+        // one query for all photos of all requests, grouped below
+        Map<Object, List<Map<String, Object>>> photosByRequest = new LinkedHashMap<>();
+        jdbc.query("""
+                SELECT r.id AS request_id, p.id, p.status
+                FROM removal_requests r CROSS JOIN unnest(r.photo_ids) AS pid
+                JOIN photos p ON p.id = pid
+                WHERE r.event_id = ?
+                """, rs -> {
+            Map<String, Object> photo = new LinkedHashMap<>();
+            UUID photoId = rs.getObject("id", UUID.class);
+            photo.put("id", photoId);
+            photo.put("status", rs.getString("status"));
+            if (!"purged".equals(rs.getString("status"))) {
+                photo.put("thumbUrl", signer.link(photoId, "thumb", "o:" + organizerId));
             }
-            row.put("photos", photos);
-            out.add(row);
+            photosByRequest.computeIfAbsent(rs.getObject("request_id"), k -> new ArrayList<>()).add(photo);
+        }, id);
+        for (Map<String, Object> request : requests) {
+            request.put("photos", photosByRequest.getOrDefault(request.get("id"), List.of()));
         }
-        return out;
+        return requests;
     }
 
     /** Approve = purge the photos for good (originals, thumbnails, vectors). */
@@ -287,11 +307,4 @@ public class EventController {
         return out;
     }
 
-    private static Object toArray(Object sqlArray) {
-        try {
-            return ((java.sql.Array) sqlArray).getArray();
-        } catch (java.sql.SQLException e) {
-            throw new IllegalStateException(e);
-        }
-    }
 }

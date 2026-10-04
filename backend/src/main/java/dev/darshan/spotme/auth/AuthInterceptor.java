@@ -3,6 +3,7 @@ package dev.darshan.spotme.auth;
 import dev.darshan.spotme.common.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -37,7 +38,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw ApiException.unauthorized();
         }
         if (attendeePath && !(principal instanceof Principal.Attendee)) {
-            throw new ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED, "access_ended",
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "access_ended",
                     "Your access to this event has ended. Open your invite link again.");
         }
         request.setAttribute(PRINCIPAL, principal);
