@@ -1,0 +1,15 @@
+{
+ "what": "resident memory of the app process with the hosted flags (-Xmx128m, SerialGC, MALLOC_ARENA_MAX=2, 1 face engine, 1 worker thread), measured on the development box",
+ "rss_mb_after_startup": 182,
+ "rss_mb_after_first_photo_indexed": 357,
+ "rss_mb_after_12_photos": 376,
+ "jvm_committed_kb_native_memory_tracking": 229721,
+ "peak_rss_mb_indexing_36_demo_photos": {
+  "xmx200m_opencv2": 467,
+  "xmx200m_arena2": 493,
+  "xmx128m_opencv1_arena2": 492
+ },
+ "box_memory_mb": 473,
+ "box_cpus": 2,
+ "note": "The jump after the first photo is the face models being loaded into OpenCV (native memory, outside the Java heap). A smaller heap barely moves the peak, so the hosted start script adds a 1 GB swap file."
+}

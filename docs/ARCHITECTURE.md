@@ -1,0 +1,194 @@
+# Architecture
+
+SpotMe is one Spring Boot application backed by one PostgreSQL database. The web UI is a static Next.js
+export that the same application serves, so in production a single process answers everything.
+
+![SpotMe architecture](images/architecture.png)
+
+## Contents
+
+- [Components](#components)
+- [Data model](#data-model)
+- [Flow 1: an organizer uploads photos](#flow-1-an-organizer-uploads-photos)
+- [Flow 2: the worker indexes a photo](#flow-2-the-worker-indexes-a-photo)
+- [Flow 3: a guest searches with a selfie](#flow-3-a-guest-searches-with-a-selfie)
+- [Flow 4: removal, withdrawal and expiry](#flow-4-removal-withdrawal-and-expiry)
+- [Security and privacy model](#security-and-privacy-model)
+- [Process roles and configuration](#process-roles-and-configuration)
+- [Hosted deployment](#hosted-deployment)
+- [Measured numbers](#measured-numbers)
+- [Limits](#limits)
+
+## Components
+
+| Package | Responsibility |
+|---|---|
+| `auth` | Organizer accounts (BCrypt), opaque bearer sessions stored as SHA-256 hashes, the interceptor that decides which token may call which path |
+| `event` | Events, the purpose notice, publishing, invites, review (hide / unhide), removal decisions |
+| `media` | `PhotoIntake` (validate, re-encode, thumbnail, store, enqueue), `ImageProcessor`, `PhotoStorage`, signed media links |
+| `jobs` | The Postgres job queue, the worker loop, the indexing handler, housekeeping (lease reaper, expiry sweep, orphan files) |
+| `face` | `FaceEngine` (OpenCV YuNet + SFace) and a small pool so a fixed number of engines are shared by threads |
+| `search` | Selfie rules (exactly one clear face) and the event-scoped distance query |
+| `attendee` | The guest API: notice, consent, search, download as ZIP, wrong-match reports, removal requests, withdrawal |
+| `privacy` | `PurgeService`: deleting one photo or a whole event, files and vectors included |
+| `demo` | The optional public demo event and its per-visitor invites |
+| `eval` | An owner-only endpoint that returns raw distances, enabled only by the `eval` profile |
+| `config`, `common` | Settings (`spotme.*`), serving the web UI, error JSON, rate limiting, token helpers |
+
+## Data model
+
+All state is in PostgreSQL. The schema is in
+[`V1__init.sql`](../backend/src/main/resources/db/migration/V1__init.sql) and
+[`V2__demo_event.sql`](../backend/src/main/resources/db/migration/V2__demo_event.sql).
+
+| Table | Holds | Notes |
+|---|---|---|
+| `organizers` | email, display name, BCrypt hash | email is unique and stored lower case |
+| `events` | title, purpose notice + version, status, expiry, `deletion_epoch`, `demo` | status: `draft`, `published`, `deleting`, `purged`; expiry at most 90 days out |
+| `memberships` | one row per invited guest: label, hash of the invite token, consent version, withdrawal, revocation | the invite token itself is never stored |
+| `sessions` | hash of a bearer token, organizer or membership, expiry | exactly one of the two owners is set (a `CHECK` constraint) |
+| `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
+| `faces` | box, detection score, `embedding vector(128)`, `model_version` | indexed on `(event_id, model_version)`; no face exists outside its event |
+| `jobs` | kind, target, dedupe key, state, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases |
+| `removal_requests` | photos a guest asked to remove, note, decision | |
+| `wrong_match_reports` | guest + photo | hides that photo from that guest's results only |
+| `worker_heartbeats` | worker id, last seen, jobs done | drives the "worker active" badge on the organizer page |
+
+## Flow 1: an organizer uploads photos
+
+1. The web page sends each file as its own request, 4 at a time, so one bad file never fails a batch.
+2. `PhotoIntake` hashes the bytes. A file already in the event returns `duplicate`; a file that was removed on
+   request is refused (`removed_photo`). An event holds at most `spotme.upload.max-photos-per-event` photos.
+3. `ImageProcessor` reads the real type from the first bytes (JPEG or PNG), reads only the header to check the
+   pixel count against `spotme.upload.max-pixels`, then decodes (at most `max-concurrent-decodes` at a time),
+   re-encodes to JPEG, which drops EXIF data such as GPS position, and makes a 480 px thumbnail.
+4. Both files are written under keys built from generated ids. Then one transaction inserts the photo row
+   (`queued`) and its `INDEX_PHOTO` job. If the transaction fails, the files are deleted; if the process dies
+   in between, the orphan sweeper deletes them after 15 minutes.
+
+## Flow 2: the worker indexes a photo
+
+![Job states](images/jobs.png)
+
+1. Each worker thread claims a job:
+   `UPDATE jobs ... WHERE id IN (SELECT id FROM jobs WHERE state = 'queued' AND run_after <= now() ORDER BY run_after, id LIMIT n FOR UPDATE SKIP LOCKED)`,
+   setting `state = 'running'`, a 60 s lease and a new random `claim_token`.
+2. The slow half runs with no transaction open: read the file, scale it so the long side is at most 1280 px,
+   detect faces with YuNet (score 0.8 or higher, at least 40 px), align and crop each face, and embed it with
+   SFace into 128 numbers normalised to unit length.
+3. The fast half is one transaction. It locks the photo row and re-checks that the photo is still wanted
+   (still `processing`, not suppressed, the event still live and its `deletion_epoch` unchanged). Only then are
+   the photo's old faces deleted, the new ones inserted and the job completed, and completion only succeeds
+   if the `claim_token` still matches. Otherwise the result is discarded.
+4. Errors: a permanent one (damaged image, missing file) fails the photo at once with a reason the organizer
+   sees; a temporary one is retried with exponential backoff and jitter, up to 5 attempts, capped at 5 minutes.
+5. Every 5 seconds the reaper returns jobs whose lease has expired to the queue, so a worker that died
+   mid-photo costs at most one lease of delay.
+
+## Flow 3: a guest searches with a selfie
+
+![Search flow](images/search.png)
+
+1. The guest opens `/join#<token>`. The page calls `GET /api/join/{token}` and shows the organizer's notice,
+   what happens to the selfie, and the deletion date.
+2. Agreeing (`POST /api/join/{token}/consent`) records the notice version and returns a guest session.
+3. `POST /api/attendee/search` takes the selfie as the raw request body (the page shrinks it in the browser
+   first). The session is re-checked on every call: consented to the current notice, not withdrawn, not
+   revoked, event published and not expired. Searches are limited to 10 per guest per minute.
+4. The selfie is decoded in memory and must contain exactly one clear face: none is refused, and a second face
+   at least a quarter of the size of the largest is refused too, so the app never guesses whose photos to show.
+5. One SQL query compares the vector with every face in that event using pgvector's cosine distance operator
+   `<=>`, keeps photos whose closest face is within 0.55, and leaves out hidden, suppressed and
+   reported-by-this-guest photos.
+6. The response lists photo ids with signed thumbnail and download links valid for 10 minutes, a flag when
+   some photos are still being indexed, and a `Server-Timing` header with the decode, face and SQL times.
+   The selfie bytes are dropped when the request ends.
+
+## Flow 4: removal, withdrawal and expiry
+
+![Removal flow](images/removal.png)
+
+- **Removal request:** the selected photos are suppressed for everyone at once. Approval enqueues a
+  `PURGE_PHOTO` job that deletes both files and all face vectors and marks the row `purged`, keeping only the
+  content hash so the same file cannot be uploaded again. Rejection lifts the suppression unless another open
+  request still covers the photo.
+- **Wrong match:** hides the photo from the reporting guest only and counts it for the organizer.
+- **Withdrawal:** the guest's sessions are deleted and the invite stops working.
+- **Expiry:** every minute the sweeper starts deletion for events past `expires_at`. Deletion bumps the
+  `deletion_epoch` (so in-flight indexing results are thrown away), then a `PURGE_EVENT` job removes files,
+  vectors, photos, memberships and requests, leaving a tombstone event row with status `purged`.
+
+## Security and privacy model
+
+| Concern | How it is handled |
+|---|---|
+| Who can search | Only a guest with a personal invite who agreed to the current notice, for a published, unexpired event |
+| Scope | Every face row carries its `event_id`; the search query always filters by the guest's event |
+| Selfies | Never written to disk or the database; error logs carry only the exception type and message |
+| Credentials | Session and invite tokens are random (256 bits) and stored as SHA-256; invite tokens travel after `#` |
+| Passwords | BCrypt; 10 login attempts per email per minute; the same answer for unknown email and wrong password |
+| Photo access | HMAC-signed links with subject and expiry, plus a live access check when the link is used |
+| Uploads | Type from magic bytes, pixel cap before decoding, re-encode strips EXIF, generated storage keys |
+| Retention | Expiry at most 90 days; purge removes files and vectors; removal requests hide photos immediately |
+| Organizer duty | Creating an event requires confirming that everyone pictured is an adult and has agreed |
+
+## Process roles and configuration
+
+| Profile | Runs | Typical use |
+|---|---|---|
+| (default) | API, worker and sweepers in one process | local development, the hosted demo |
+| `api` | HTTP only, `spotme.worker.enabled=false` | scale the API separately |
+| `worker` | job loop and sweepers, no web server | a separate indexing machine |
+| `eval` | adds the owner-only raw distance endpoint | the measurement scripts only |
+
+Every `spotme.*` setting in
+[`application.properties`](../backend/src/main/resources/application.properties) can be overridden with an
+environment variable (for example `SPOTME_WORKER_THREADS`).
+
+## Hosted deployment
+
+The public demo runs on a single Debian 12 box with 473 MB of memory and 2 vCPUs, behind
+https://spotme.sites.tab.bot. `deploy/package.sh` builds a 33 MB folder (unpacked app, web UI, demo photos,
+scripts) and `deploy/start.sh` runs on the box:
+
+1. adds a 1 GB swap file,
+2. installs PostgreSQL 16 and pgvector from the PostgreSQL apt repository if missing, applies small memory
+   settings (`shared_buffers` 32 MB, 20 connections) and creates the database, user and `vector` extension,
+3. downloads a Java 21 runtime (Eclipse Temurin), the OpenCV jar from Maven Central and the two face models,
+   checking SHA-256 where the source publishes one,
+4. starts the app with one face engine, one worker thread, a 128 MB heap, a 16 megapixel cap, at most 60
+   photos per event and the demo event switched on.
+
+Every step checks what is already present, so a restart takes seconds.
+
+## Measured numbers
+
+Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
+
+| What | Result | Source |
+|---|---|---|
+| Accuracy on the LFW test split at 0.55 | precision 0.9955, recall 0.8871, 0 of 25 absent people matched | `accuracy.json` |
+| Search latency, development machine | p50 59.2 ms, p95 79.7 ms (face step p50 30.1 ms, SQL p50 16.9 ms) | `latency.json` |
+| Indexing throughput, 2 x 2 threads | 582.4 photos per minute (438 photos, 807 faces) | `indexing.json` |
+| Crash in the middle of a batch | 438 of 438 photos ready, 0 duplicate faces, drained 60.4 s after restart | `indexing.json` |
+| Exact search in one event, 100,000 vectors | p50 0.63 ms, recall 1.0 (HNSW with the event filter: recall 0.411) | `ann_bench.json` |
+| Hosted box, 36 photos | all indexed 6.4 s after the first upload; search p50 166.1 ms from the client | `hosted.json` |
+
+## Limits
+
+- **Accuracy is measured on a benchmark, not on real events.** LFW composites are mostly frontal, well-lit
+  faces; real event photos have turned heads, motion blur, sunglasses and small faces in crowds, so expect
+  lower recall. Recall on the tune split was 0.684.
+- **One machine.** Photo files are on local disk and the rate limiters are in memory, so running two API
+  instances needs shared storage and a shared rate limit store.
+- **Exact search grows with event size.** Fine for hundreds or thousands of faces per event (under a
+  millisecond in the benchmark); a single event with millions of faces would need partitioning or a
+  filtered index.
+- **The hosted box is small.** Peak memory while indexing is above its 473 MB of RAM, so it relies on swap; photos
+  are capped at 16 megapixels and 60 per event there.
+- **No automatic delivery.** Because selfies are not kept, guests are not notified about photos added later.
+- **Removal is per photo.** Removing a group photo removes it for everyone in it; blurring one face is not
+  implemented.
+- **JPEG and PNG only.** HEIC photos from iPhones must be converted first.
+- **Guests are not identity-checked.** A forwarded invite works for whoever holds it until the organizer
+  revokes it. Matches are likely matches, not proof of identity.

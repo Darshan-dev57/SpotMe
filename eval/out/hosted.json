@@ -1,0 +1,31 @@
+{
+ "api": "https://spotme.sites.tab.bot",
+ "photos": 36,
+ "photos_ready": 36,
+ "upload_seconds": 4.9,
+ "upload_request_ms_p50": 261.9,
+ "seconds_until_all_indexed": 6.4,
+ "matches_per_selfie": {
+  "behnken.jpg": 15,
+  "hurley-2.jpg": 4,
+  "glover.jpg": 0
+ },
+ "searches": 24,
+ "search_total_ms": {
+  "p50": 166.1,
+  "p95": 275.2
+ },
+ "search_decode_ms": {
+  "p50": 2.5,
+  "p95": 4.3
+ },
+ "search_faces_ms": {
+  "p50": 36.9,
+  "p95": 48.6
+ },
+ "search_sql_ms": {
+  "p50": 1.4,
+  "p95": 1.8
+ },
+ "note": "total_ms is measured from this client, so it includes the network round trip; the parts come from Server-Timing."
+}
