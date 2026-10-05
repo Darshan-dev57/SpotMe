@@ -122,3 +122,22 @@
     animation: none;
   }
 }
+
+/* ObsidianUI's Discover Button in SpotMe's colours: paper surface, safelight fill */
+.spotme-discover {
+  --obsidian-discover-surface: var(--secondary);
+  --obsidian-discover-text: var(--foreground);
+  --obsidian-discover-fill: var(--primary);
+  --obsidian-discover-active-text: var(--primary-foreground);
+  min-height: 56px;
+}
+.spotme-discover .obsidian-discover-button__icon {
+  width: 54px;
+  height: 54px;
+}
+.spotme-discover .obsidian-discover-button__fill {
+  width: 50px;
+}
+.spotme-discover:disabled {
+  cursor: progress;
+}
