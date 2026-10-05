@@ -115,7 +115,11 @@ function EventDashboard() {
             </div>
 
             <div className="mt-8 rounded-xl border bg-card p-4 sm:p-5">
-              <Pipeline counts={event.counts} worker={event.worker} />
+              <Pipeline
+                counts={event.counts}
+                hidden={photos.filter((p) => p.status === "ready" && (p.hidden || p.suppressed)).length}
+                worker={event.worker}
+              />
             </div>
 
             <Tabs defaultValue="photos" className="mt-10">

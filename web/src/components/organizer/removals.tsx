@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ApiError, RemovalRequest, api, mediaUrl } from "@/lib/api";
@@ -36,6 +36,13 @@ export function Removals({ eventId, token, onChanged }: { eventId: string; token
     const t = setInterval(() => setVersion((v) => v + 1), 2000);
     return () => clearInterval(t);
   }, [purging]);
+
+  // once a purge finishes, the event's photo counts have changed too
+  const wasPurging = useRef(false);
+  useEffect(() => {
+    if (wasPurging.current && !purging) onChanged();
+    wasPurging.current = purging;
+  }, [purging, onChanged]);
 
   async function decide(id: string, decision: "approve" | "reject") {
     try {

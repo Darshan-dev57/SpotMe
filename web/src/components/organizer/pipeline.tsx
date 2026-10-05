@@ -6,7 +6,16 @@ import { cn } from "@/lib/utils";
  * Where the photos are in the pipeline: one bar split into ready / processing / queued / failed.
  * "Uploaded" is not "searchable", so the organizer sees both.
  */
-export function Pipeline({ counts, worker }: { counts: Counts; worker: { active: boolean; lastSeen: string | null } }) {
+export function Pipeline({
+  counts,
+  hidden,
+  worker,
+}: {
+  counts: Counts;
+  /** ready photos that are hidden (a removal request or the organizer), so not searchable */
+  hidden: number;
+  worker: { active: boolean; lastSeen: string | null };
+}) {
   const total = counts.ready + counts.processing + counts.queued + counts.failed;
   const parts = [
     { key: "ready", label: "ready", value: counts.ready, className: "bg-ok" },
@@ -20,8 +29,9 @@ export function Pipeline({ counts, worker }: { counts: Counts; worker: { active:
     <div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <p className="text-sm">
-          <span className="tabular text-base font-medium">{counts.ready}</span>
+          <span className="tabular text-base font-medium">{counts.ready - hidden}</span>
           <span className="text-muted-foreground"> of {plural(total, "photo")} searchable</span>
+          {hidden > 0 && <span className="text-muted-foreground"> · {hidden} hidden</span>}
         </p>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <span
