@@ -75,7 +75,37 @@ export function SelfieStep({
         harder.
       </p>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-[14rem_1fr] sm:items-center">
+      {notice.demo && (
+        <div className="mt-6">
+          <h2 className="font-semibold">Try it with a sample selfie</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Official NASA portraits. None of them is one of the album&apos;s photos.
+          </p>
+          <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
+            {DEMO_SELFIES.map((s) => (
+              <li key={s.src}>
+                <button
+                  type="button"
+                  onClick={() => trySample(s.src)}
+                  disabled={busy}
+                  className="group block w-full text-left disabled:opacity-60"
+                >
+                  <span className="block aspect-[3/4] overflow-hidden rounded-lg bg-muted ring-primary ring-offset-2 ring-offset-background transition-shadow group-hover:ring-2 group-focus-visible:ring-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.src} alt="" className="h-full w-full object-cover" />
+                  </span>
+                  <span className="mt-1.5 block text-sm leading-tight font-medium">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">{s.note}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <h2 className="mt-8 border-t pt-6 font-semibold">Or use your own</h2>
+          <p className="mt-1 text-sm text-muted-foreground">You are not in this album, so expect no matches.</p>
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-6 sm:grid-cols-[14rem_1fr] sm:items-center">
         <div className="relative mx-auto aspect-[3/4] w-48 overflow-hidden rounded-2xl bg-muted sm:mx-0 sm:w-56">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -110,34 +140,6 @@ export function SelfieStep({
           <p className="text-sm text-muted-foreground">The selfie is used for this one search and then discarded.</p>
         </div>
       </div>
-
-      {notice.demo && (
-        <div className="mt-10 border-t pt-6">
-          <h2 className="font-semibold">No selfie handy? Use a sample</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Official NASA portraits. None of them is one of the album&apos;s photos.
-          </p>
-          <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
-            {DEMO_SELFIES.map((s) => (
-              <li key={s.src}>
-                <button
-                  type="button"
-                  onClick={() => trySample(s.src)}
-                  disabled={busy}
-                  className="group block w-full text-left disabled:opacity-60"
-                >
-                  <span className="block aspect-[3/4] overflow-hidden rounded-lg bg-muted ring-primary ring-offset-2 ring-offset-background transition-shadow group-hover:ring-2 group-focus-visible:ring-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={s.src} alt="" className="h-full w-full object-cover" />
-                  </span>
-                  <span className="mt-1.5 block text-sm leading-tight font-medium">{s.name}</span>
-                  <span className="block text-xs text-muted-foreground">{s.note}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <input ref={camera} type="file" accept="image/*" capture="user" hidden onChange={(e) => search(e.target.files?.[0])} />
       <input ref={library} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => search(e.target.files?.[0])} />
