@@ -6,6 +6,7 @@ web/out/
 deploy/out/
 web/next-env.d.ts
 *.log
+__pycache__/
 
 # local data, never commit photos or models
 models/*.onnx

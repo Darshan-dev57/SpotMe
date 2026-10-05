@@ -1,8 +1,11 @@
 package dev.darshan.spotme.auth;
 
+import dev.darshan.spotme.common.Tokens;
+import dev.darshan.spotme.jobs.Housekeeping;
 import dev.darshan.spotme.support.Api;
 import dev.darshan.spotme.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
 
@@ -10,6 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** Accounts, sessions and who may call what. */
 class AuthIntegrationTest extends IntegrationTest {
+
+    @Autowired
+    Housekeeping housekeeping;
 
     @Test
     void anEmailCanOnlyRegisterOnceWhateverItsCase() {
@@ -75,6 +81,16 @@ class AuthIntegrationTest extends IntegrationTest {
         var madeUp = api.get("/api/join/not-a-real-invite", null);
         assertThat(madeUp.getStatusCode().value()).isEqualTo(404);
         assertThat(madeUp.getBody()).containsEntry("code", "invite_invalid");
+    }
+
+    @Test
+    void expiredSessionsStopWorkingAndAreCleanedUp() {
+        String token = api.registerOrganizer("expired@example.com");
+        jdbc.update("UPDATE sessions SET expires_at = now() - interval '1 minute' WHERE token_hash = ?", Tokens.sha256Hex(token));
+        assertThat(api.get("/api/events", token).getStatusCode().value()).isEqualTo(401);
+
+        assertThat(housekeeping.removeExpiredSessions()).isGreaterThanOrEqualTo(1);
+        assertThat(count("SELECT count(*) FROM sessions WHERE token_hash = ?", Tokens.sha256Hex(token))).isZero();
     }
 
     @Test
