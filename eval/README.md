@@ -50,6 +50,14 @@ other thresholds offline on the same split (needs `opencv-python` and `numpy`). 
 `eval/data/scale/lfw` first; raw logs go to `eval/data/scale/` (or `SPOTME_SCALE_LOGS`), results to
 `eval/out/scale.json` and `eval/out/scale_sweep.json`. See `docs/MEASUREMENTS.md`.
 
+## Person removal test
+
+`erase_test.py` is a feasibility test for removing one guest from a group photo: YuNet and YOLOX find the
+person, MobileSAM cuts out their outline and LaMa (or MI-GAN) fills the area. `erase_memory.py` measures each
+model's memory on its own. Needs `onnxruntime`, `opencv-python` and `numpy`; the model sources are listed at
+the top of `erase_test.py`. The 20 test photos are listed with their licences in `erase_photos.json` and are
+not committed. Results: `eval/out/erase_test.json` and `docs/MEASUREMENTS.md`.
+
 ## Scoring
 
 Scoring is per **photo**, because that is what an attendee sees: a group photo is one result even if

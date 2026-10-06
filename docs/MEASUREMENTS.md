@@ -203,6 +203,42 @@ event's counts and the guest search are not affected.
 The event is still on the hosted box. The test registered its own organizer account and did not touch the demo
 event.
 
+## Removing a person from a group photo (`erase_test.json`)
+
+A feasibility test, not part of the app. The question: can free models running on our own machine remove one
+guest from a group photo so that the photo still looks natural, and what does it cost?
+
+`eval/erase_test.py` runs four steps on each photo: YuNet finds the faces, YOLOX (OpenCV Zoo) finds the person
+boxes, MobileSAM cuts out the outline of the person whose face was picked, and LaMa fills that area from the
+background around it. The mask is grown by 14 px or 15% of the face height so no edge of the person is left, and
+the fill works on a crop twice the size of the person, resized to the 512 x 512 the model takes.
+
+Twenty group photos from Wikimedia Commons (CC0, CC BY, CC BY-SA; sources in `eval/erase_photos.json`, images not
+committed), one person removed from each, judged by eye at phone size:
+
+| Where the person is | Natural | Small flaw | Smudge |
+|---|---|---|---|
+| At the side (8) | 2 | 4 | 2 |
+| In the middle (4) | 1 | 2 | 1 |
+| Overlapping others (8) | 1 | 1 | 6 |
+| All (20) | 4 | 7 | 9 |
+
+A small flaw is something left behind that a careful look finds: an object the person held, their shadow, sign
+text cut in half. A smudge is a visible smear. It works when the person stands a little apart with background
+behind them. It fails when they hug or touch someone (a smear, or their hand left on a friend's shoulder) and in
+crowds, where there is no background to reveal and the model paints a blurred body.
+
+MI-GAN, a much smaller fill model (28 MB), was tried on the same masks and left a ghost of the person in nearly
+every photo.
+
+Cost, two threads per model on the development box: 5.2 s per photo (median, max 6.2 s) plus 11 s to load the
+models. Measured one model at a time in a fresh process (`eval/erase_memory.py`): LaMa adds 874 MB, MobileSAM
+322 MB, YOLOX 107 MB; with all of them loaded the process peaks at 2.06 GB. Most of LaMa's peak is working memory
+for one 512 x 512 image, so turning off the memory arena or graph optimisation did not lower it.
+
+The hosted box has 473 MB in total and about 100 MB free while the app runs, so none of this fits there. It
+needs a machine with at least 1 GB free for the job, which is why the erase option stays switched off.
+
 ## Reproducing
 
 ```bash
@@ -221,4 +257,6 @@ scripts/fetch-demo-photos.sh && python3 eval/hosted_check.py   # hosted.json
 python3 eval/scale_test.py prepare && python3 eval/scale_test.py upload
 python3 eval/scale_test.py search && python3 eval/scale_test.py summary   # scale.json
 python3 eval/scale_sweep.py                                               # scale_sweep.json
+# person removal test (needs onnxruntime and the models listed in erase_test.json)
+python3 eval/erase_test.py --models M --photos P --out O --plan plan.json  # per-photo times, summed into erase_test.json
 ```
