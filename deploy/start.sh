@@ -116,6 +116,8 @@ export SPOTME_UPLOAD_MAXPIXELS=16000000
 export SPOTME_UPLOAD_MAXPHOTOSPEREVENT=60
 export SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE=5
 export SERVER_TOMCAT_THREADS_MAX=16
+# /actuator/health shows disk, database and memory details, so the box can be watched from outside
+export MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS=always
 export PORT
 
 log "starting SpotMe on port $PORT"
