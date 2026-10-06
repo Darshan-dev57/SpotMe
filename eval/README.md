@@ -42,6 +42,14 @@ python3 eval/run_eval.py latency
 pip install psycopg2-binary numpy && python3 eval/ann_bench.py
 ```
 
+## Scale test
+
+`scale_test.py` runs the full LFW set (13,233 photos) against the hosted app over HTTP: one event with
+11,251 photos, 1,680 held-out selfies and 300 strangers who are not in the event. `scale_sweep.py` scores
+other thresholds offline on the same split (needs `opencv-python` and `numpy`). Extract `lfw.tgz` into
+`eval/data/scale/lfw` first; raw logs go to `eval/data/scale/` (or `SPOTME_SCALE_LOGS`), results to
+`eval/out/scale.json` and `eval/out/scale_sweep.json`. See `docs/MEASUREMENTS.md`.
+
 ## Scoring
 
 Scoring is per **photo**, because that is what an attendee sees: a group photo is one result even if
