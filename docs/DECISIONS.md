@@ -71,7 +71,8 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 
   An event holds hundreds or thousands of faces, so the exact scan is already under a millisecond and never
   misses a match. HNSW filters after its graph search, so with an event filter it returned 4.12 of the 10
-  wanted results on average.
+  wanted results on average. On the hosted box, one event with 11,251 photos and 12,940 faces is still
+  searched in 7.3 ms p50 and 12.2 ms p95 (`eval/out/scale.json`).
 - **Alternative:** an HNSW index (built in 50.8 s, 83.1 MB for the 100,000 vectors).
 - **Tradeoff:** exact search grows linearly with the size of one event. A festival with millions of faces
   in a single event would be slow.
