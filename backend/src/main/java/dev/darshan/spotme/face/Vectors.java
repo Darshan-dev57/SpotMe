@@ -17,4 +17,19 @@ public final class Vectors {
         }
         return sb.append(']').toString();
     }
+
+    /** The reverse of toPgVector, for a vector read back as text. */
+    public static float[] fromPgVector(String text) {
+        String inner = text.trim();
+        inner = inner.substring(1, inner.length() - 1);
+        if (inner.isBlank()) {
+            return new float[0];
+        }
+        String[] parts = inner.split(",");
+        float[] v = new float[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            v[i] = Float.parseFloat(parts[i].trim());
+        }
+        return v;
+    }
 }
