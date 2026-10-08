@@ -137,7 +137,6 @@ function CreateEvent({
   return (
     <section className="mt-8 rounded-xl border bg-card p-5 sm:p-6">
       <h2 className="text-xl font-semibold">New private event</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Guests can only search after you publish it.</p>
       <form action={submit} className="mt-6 grid gap-5">
         <Field id="title" label="Event name">
           <Input id="title" name="title" required maxLength={80} placeholder="Robotics club farewell" />
