@@ -51,8 +51,9 @@ A 40 second walkthrough of the whole flow is in [`docs/media/spotme-demo.mp4`](d
 4. **Consent.** The guest reads the organizer's purpose notice and agrees before anything else happens.
 5. **Search.** The guest's selfie must show exactly one clear face. Its vector is compared with the faces of
    that one event only, and photos closer than a measured threshold come back as short-lived signed links.
-6. **Remove.** A guest can hide photos at once and ask for them to be deleted, or withdraw consent. The
-   organizer approves deletion, which removes the files, thumbnails and face vectors.
+6. **Remove.** A guest can remove the photos where they are alone (group photos stay), or withdraw consent.
+   The photos are hidden at once; the organizer approves deletion, which removes the files, thumbnails and
+   face vectors.
 
 Java and Spring Boot hold all of the logic: the API, the job queue, the face pipeline, search and privacy
 rules. The web UI is a static Next.js export served by the same application, so production is a single
@@ -70,7 +71,8 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 - Consent to a versioned notice before searching
 - One selfie (camera or gallery), results in under a second
 - Full-screen viewer, single downloads or a ZIP of selected photos
-- "Not me" reports, removal requests and consent withdrawal
+- "Not me" reports and consent withdrawal
+- Removal choice: only my solo photos, or erase me from group photos too (erasing is switched off for now)
 
 **Engineering**
 - Durable job queue in PostgreSQL: leases, retries with backoff, idempotent indexing, crash recovery
@@ -205,7 +207,8 @@ scripts/        model and demo photo downloads
 - Exact search is fast for thousands of faces per event; an event with millions of faces would need
   partitioning or a filtered vector index.
 - Selfies are not kept, so guests are not told about photos added after their search.
-- Removing a group photo removes it for everyone in it; blurring one face is not implemented.
+- Erasing a guest from group photos is built but switched off: the inpainting it needs looks natural only when
+  the person stands apart, and needs about 1 GB of memory ([test results](docs/MEASUREMENTS.md)).
 - JPEG and PNG only. HEIC photos must be converted first.
 - Invite links are not tied to a verified identity. A forwarded link works until the organizer revokes it,
   and a match is a likely match, not proof of identity.
@@ -215,7 +218,7 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data model, the four main flows, security model, hosting
-- [docs/DECISIONS.md](docs/DECISIONS.md): twenty design decisions with the alternative, the tradeoff and what would change them
+- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-one design decisions with the alternative, the tradeoff and what would change them
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 

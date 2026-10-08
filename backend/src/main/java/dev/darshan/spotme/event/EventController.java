@@ -6,6 +6,7 @@ import dev.darshan.spotme.common.Tokens;
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.media.MediaSigner;
 import dev.darshan.spotme.privacy.PurgeService;
+import dev.darshan.spotme.removal.RemovalService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -50,14 +51,16 @@ public class EventController {
     private final JdbcTemplate jdbc;
     private final EventAccess access;
     private final PurgeService purge;
+    private final RemovalService removals;
     private final MediaSigner signer;
     private final SpotMeProperties props;
 
-    public EventController(JdbcTemplate jdbc, EventAccess access, PurgeService purge, MediaSigner signer,
-                           SpotMeProperties props) {
+    public EventController(JdbcTemplate jdbc, EventAccess access, PurgeService purge, RemovalService removals,
+                           MediaSigner signer, SpotMeProperties props) {
         this.jdbc = jdbc;
         this.access = access;
         this.purge = purge;
+        this.removals = removals;
         this.signer = signer;
         this.props = props;
     }
@@ -242,7 +245,7 @@ public class EventController {
     public List<Map<String, Object>> removals(@PathVariable UUID id, HttpServletRequest http) {
         UUID organizerId = access.requireOwner(id, http);
         List<Map<String, Object>> requests = jdbc.queryForList("""
-                SELECT r.id, r.status, r.note, r.created_at AS "createdAt", r.decided_at AS "decidedAt",
+                SELECT r.id, r.status, r.mode, r.note, r.created_at AS "createdAt", r.decided_at AS "decidedAt",
                        r.completed_at AS "completedAt", m.label AS "requestedBy"
                 FROM removal_requests r LEFT JOIN memberships m ON m.id = r.membership_id
                 WHERE r.event_id = ? ORDER BY r.created_at DESC
@@ -264,37 +267,43 @@ public class EventController {
             }
             photosByRequest.computeIfAbsent(rs.getObject("request_id"), k -> new ArrayList<>()).add(photo);
         }, id);
+        // group photos the guest asked to be erased from, with the face to erase
+        Map<Object, List<Map<String, Object>>> editsByRequest = new LinkedHashMap<>();
+        jdbc.query("""
+                SELECT e.request_id, e.photo_id, e.status, e.box_x, e.box_y, e.box_w, e.box_h, p.status AS photo_status
+                FROM photo_edits e JOIN photos p ON p.id = e.photo_id
+                WHERE e.event_id = ?
+                """, rs -> {
+            Map<String, Object> edit = new LinkedHashMap<>();
+            UUID photoId = rs.getObject("photo_id", UUID.class);
+            edit.put("photoId", photoId);
+            edit.put("status", rs.getString("status"));
+            edit.put("face", Map.of("x", rs.getInt("box_x"), "y", rs.getInt("box_y"), "w", rs.getInt("box_w"), "h", rs.getInt("box_h")));
+            if (!"purged".equals(rs.getString("photo_status"))) {
+                edit.put("thumbUrl", signer.link(photoId, "thumb", "o:" + organizerId));
+            }
+            editsByRequest.computeIfAbsent(rs.getObject("request_id"), k -> new ArrayList<>()).add(edit);
+        }, id);
         for (Map<String, Object> request : requests) {
             request.put("photos", photosByRequest.getOrDefault(request.get("id"), List.of()));
+            request.put("edits", editsByRequest.getOrDefault(request.get("id"), List.of()));
         }
         return requests;
     }
 
-    /** Approve = purge the photos for good (originals, thumbnails, vectors). */
+    /** Approve = solo photos are deleted for good; group photos are edited when erasing is on. */
     @PostMapping("/{id}/removals/{requestId}/approve")
     public Map<String, Object> approve(@PathVariable UUID id, @PathVariable UUID requestId, HttpServletRequest http) {
         access.requireOwner(id, http);
-        UUID[] photoIds = access.pendingRemoval(requestId, id);
-        jdbc.update("UPDATE removal_requests SET status = 'approved', decided_at = now() WHERE id = ?", requestId);
-        for (UUID photoId : photoIds) {
-            purge.schedulePhotoPurge(photoId);
-        }
+        removals.approve(id, requestId);
         return Map.of("status", "approved");
     }
 
-    /** Reject = the photos come back, unless another open request still covers them. */
+    /** Reject = the photos come back as they were, unless another open request still covers them. */
     @PostMapping("/{id}/removals/{requestId}/reject")
     public Map<String, Object> reject(@PathVariable UUID id, @PathVariable UUID requestId, HttpServletRequest http) {
         access.requireOwner(id, http);
-        access.pendingRemoval(requestId, id);
-        jdbc.update("UPDATE removal_requests SET status = 'rejected', decided_at = now() WHERE id = ?", requestId);
-        jdbc.update("""
-                UPDATE photos p SET suppressed_at = NULL
-                WHERE p.id = ANY ((SELECT photo_ids FROM removal_requests WHERE id = ?)::uuid[])
-                  AND p.status <> 'purged'
-                  AND NOT EXISTS (SELECT 1 FROM removal_requests r
-                                  WHERE r.status IN ('received', 'approved') AND p.id = ANY (r.photo_ids))
-                """, requestId);
+        removals.reject(id, requestId);
         return Map.of("status", "rejected");
     }
 

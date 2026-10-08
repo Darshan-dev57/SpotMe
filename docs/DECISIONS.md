@@ -26,6 +26,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 18. [Hosting on one small box with a start script](#18-hosting-on-one-small-box-with-a-start-script)
 19. [Integration tests against real Postgres](#19-integration-tests-against-real-postgres)
 20. [A public demo with public domain photos](#20-a-public-demo-with-public-domain-photos)
+21. [Two removal choices, with erasing behind a switch](#21-two-removal-choices-with-erasing-behind-a-switch)
 
 ---
 
@@ -181,8 +182,9 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Why:** the person asking should not have to wait for a human, and the organizer should not lose photos
   to a mistaken click.
 - **Alternative:** delete on request, or hide only after review.
-- **Tradeoff:** a group photo removed for one person disappears for everyone in it.
-- **What would change it:** blurring one face instead of deleting the photo, which is listed as a next step.
+- **Tradeoff:** the guest has to wait for the organizer before anything is deleted for good.
+- **What would change it:** organizers who never answer; an automatic approval after some days would be the
+  first step. Which photos a request covers is decision 21.
 
 ## 12. Opaque session tokens, stored as hashes
 
@@ -286,3 +288,22 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Tradeoff:** the sample selfies are of public figures, and the demo shows how the product works rather
   than how it performs on a real party.
 - **What would change it:** a consented set of real event photos.
+
+## 21. Two removal choices, with erasing behind a switch
+
+- **Choice:** a guest who wants out picks one of two choices for the photos they were found in.
+  *Only my solo photos* removes the photos where they are the only face and leaves group photos alone.
+  *Erase me completely* also cuts them out of group photos: each group photo gets a `photo_edits` row with the
+  matched face, stays hidden until an `ERASE_PERSON` job swaps in the edited copy and drops that face's vector,
+  and then comes back for everyone else. Erasing is off (`spotme.erase.enabled=false`) and the job calls a
+  `PersonEraser` that is not set up yet, so today guests see the choice as "not available yet".
+- **Why:** deleting a whole group photo because one person asked takes it away from everyone else in it.
+  Blurring the face was tried in the design and looks bad. Erasing needs an inpainting model; the test in
+  `eval/erase_test.py` shows it looks natural when the person stands apart and smudges when they overlap
+  others, and it needs about 1 GB of memory, which the hosted box does not have.
+- **Alternative:** remove whole photos (the earlier behaviour), or blur the face.
+- **Tradeoff:** the face to erase comes from the guest's search result (`faceId`), not from a stored match,
+  because the selfie is not kept. The server checks that the face belongs to the photo, and the organizer
+  approves every request, the same safeguard as for deletion.
+- **What would change it:** the organizer approving the erase samples and a machine with about 1 GB free for
+  the job; then a real `PersonEraser` (ONNX Runtime for Java with the tested models) replaces the stub.

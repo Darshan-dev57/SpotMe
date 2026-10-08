@@ -17,7 +17,8 @@ public record SpotMeProperties(
         Search search,
         Worker worker,
         Eval eval,
-        Demo demo) {
+        Demo demo,
+        Erase erase) {
 
     public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide, int maxPhotosPerEvent) {
     }
@@ -46,5 +47,12 @@ public record SpotMeProperties(
      * invitesPerMinute limits demo invites per IP address.
      */
     public record Demo(boolean enabled, String photosDir, int invitesPerMinute) {
+    }
+
+    /**
+     * "Erase me from group photos". Off by default: the models it needs do not fit on the hosted box
+     * (see docs/MEASUREMENTS.md). While off, guests cannot choose it and no erase job is queued.
+     */
+    public record Erase(boolean enabled) {
     }
 }
