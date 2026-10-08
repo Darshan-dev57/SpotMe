@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
@@ -19,6 +19,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiError, EventDetail, Photo, api } from "@/lib/api";
 import { daysLeft, formatDate, plural } from "@/lib/format";
 
+// photos per request; "Load more" asks for the next page
+const PAGE = 500;
+// the server's largest page, used when a refresh re-reads what is already on screen
+const MAX_PAGE = 2000;
+
 export default function EventPage() {
   // useSearchParams needs a Suspense boundary in a static export
   return (
@@ -35,6 +40,9 @@ function EventDashboard() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [missing, setMissing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // how many photos are on screen, so a refresh keeps the pages already loaded
+  const loaded = useRef(0);
 
   // bumping `version` re-fetches the event and its photos
   const [version, setVersion] = useState(0);
@@ -45,12 +53,15 @@ function EventDashboard() {
     let current = true;
     Promise.all([
       api<EventDetail>(`/api/events/${id}`, { token: session.token }),
-      api<Photo[]>(`/api/events/${id}/photos`, { token: session.token }),
+      api<Photo[]>(`/api/events/${id}/photos?limit=${Math.min(Math.max(loaded.current, PAGE), MAX_PAGE)}`, {
+        token: session.token,
+      }),
     ])
       .then(([e, p]) => {
         if (!current) return;
         setEvent(e);
         setPhotos(p);
+        loaded.current = p.length;
       })
       .catch((e) => {
         if (!handleAuthError(e, router) && e instanceof ApiError && e.status === 404) setMissing(true);
@@ -67,6 +78,23 @@ function EventDashboard() {
     const t = setInterval(load, 2000);
     return () => clearInterval(t);
   }, [working, load]);
+
+  async function loadMore() {
+    if (!session) return;
+    setLoadingMore(true);
+    try {
+      const next = await api<Photo[]>(`/api/events/${id}/photos?offset=${photos.length}&limit=${PAGE}`, {
+        token: session.token,
+      });
+      const seen = new Set(photos.map((p) => p.id));
+      const all = [...photos, ...next.filter((p) => !seen.has(p.id))];
+      setPhotos(all);
+      loaded.current = all.length;
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not load more photos.");
+    }
+    setLoadingMore(false);
+  }
 
   async function publish() {
     if (!session) return;
@@ -117,7 +145,7 @@ function EventDashboard() {
             <div className="mt-8 rounded-xl border bg-card p-4 sm:p-5">
               <Pipeline
                 counts={event.counts}
-                hidden={photos.filter((p) => p.status === "ready" && (p.hidden || p.suppressed)).length}
+                hidden={event.hidden}
                 worker={event.worker}
               />
             </div>
@@ -140,6 +168,16 @@ function EventDashboard() {
               <TabsContent value="photos" className="mt-6">
                 <Uploader eventId={event.id} token={session.token} onUploaded={load} />
                 <PhotoGrid photos={photos} eventId={event.id} token={session.token} onChanged={load} />
+                {photos.length < total(event) && (
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                      Load more
+                    </Button>
+                    <span className="tabular text-sm text-muted-foreground">
+                      {photos.length.toLocaleString()} of {total(event).toLocaleString()} shown
+                    </span>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="guests" className="mt-6">
                 <Guests eventId={event.id} token={session.token} />
@@ -156,4 +194,9 @@ function EventDashboard() {
       </main>
     </>
   );
+}
+
+function total(event: EventDetail) {
+  const c = event.counts;
+  return c.queued + c.processing + c.ready + c.failed;
 }

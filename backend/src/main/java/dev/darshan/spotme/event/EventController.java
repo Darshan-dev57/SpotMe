@@ -32,6 +32,9 @@ import java.util.UUID;
 @RequestMapping("/api/events")
 public class EventController {
 
+    /** Most photos one request of the organizer photo list returns. */
+    static final int MAX_PHOTO_PAGE = 2000;
+
     static final Duration MAX_RETENTION = Duration.ofDays(90);
 
     public record CreateEventRequest(
@@ -113,7 +116,7 @@ public class EventController {
         event.put("counts", counts);
         event.put("faces", jdbc.queryForObject("SELECT count(*) FROM faces WHERE event_id = ?", Long.class, id));
         event.put("hidden", jdbc.queryForObject(
-                "SELECT count(*) FROM photos WHERE event_id = ? AND (hidden_at IS NOT NULL OR suppressed_at IS NOT NULL) AND status <> 'purged'",
+                "SELECT count(*) FROM photos WHERE event_id = ? AND (hidden_at IS NOT NULL OR suppressed_at IS NOT NULL) AND status = 'ready'",
                 Long.class, id));
         event.put("pendingRemovals", jdbc.queryForObject(
                 "SELECT count(*) FROM removal_requests WHERE event_id = ? AND status IN ('received', 'approved')", Long.class, id));
@@ -157,10 +160,17 @@ public class EventController {
 
     // ---------- photos (review) ----------
 
+
+    /** One page of the event's photos, newest first. Use offset to get the next page. */
     @GetMapping("/{id}/photos")
     public List<Map<String, Object>> photos(@PathVariable UUID id, @RequestParam(required = false) String status,
+                                            @RequestParam(defaultValue = "0") int offset,
+                                            @RequestParam(defaultValue = "500") int limit,
                                             HttpServletRequest http) {
         UUID organizerId = access.requireOwner(id, http);
+        if (offset < 0 || limit < 1 || limit > MAX_PHOTO_PAGE) {
+            throw ApiException.badRequest("bad_page", "offset must be 0 or more and limit between 1 and " + MAX_PHOTO_PAGE + ".");
+        }
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id, p.status, p.face_count AS "faceCount", p.error_code AS "errorCode", p.width, p.height,
                        p.hidden_at IS NOT NULL AS hidden, p.suppressed_at IS NOT NULL AS suppressed,
@@ -168,9 +178,9 @@ public class EventController {
                        p.created_at AS "createdAt"
                 FROM photos p
                 WHERE p.event_id = ? AND p.status <> 'purged' AND (?::text IS NULL OR p.status = ?::text)
-                ORDER BY p.created_at DESC
-                LIMIT 1000
-                """, id, status, status);
+                ORDER BY p.created_at DESC, p.id
+                LIMIT ? OFFSET ?
+                """, id, status, status, limit, offset);
         for (Map<String, Object> row : rows) {
             if (!"failed".equals(row.get("status"))) {
                 row.put("thumbUrl", signer.link((UUID) row.get("id"), "thumb", "o:" + organizerId));
