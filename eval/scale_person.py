@@ -2,7 +2,11 @@
 "Find one person's photos in a big event": every person with 10 or more photos in the scale-test
 event searches for themselves on the hosted app, and we count how many of their photos come back.
 
-  python3 eval/scale_person.py   # after scale_test.py upload; needs the same manifest, state and uploads log
+  python3 eval/scale_person.py        # writes scale_person.json (run with the app at 0.55)
+  python3 eval/scale_person.py 0.51   # writes scale_person_051.json, for the app running at 0.51
+
+Run it with the threshold the hosted app is using; the number only labels the output and sets the offline
+check. It also searches with the 300 strangers (people who are not in the event), like scale_test.py.
 
 Uses the scale-test event (11,251 photos) and the same held-out selfies (seed 11). A selfie the API refuses
 because it has more than one face is retried with the person's first event photo that has exactly one face;
@@ -15,6 +19,7 @@ import collections
 import json
 import os
 import statistics
+import sys
 import time
 
 import numpy as np
@@ -24,6 +29,7 @@ from run_eval import save
 from scale_test import API, LFW, LOGS, MAX_RESULTS, load, organizer, read_lines
 
 MIN_PHOTOS = 10
+THRESHOLD = float(sys.argv[1]) if len(sys.argv) > 1 else 0.55
 PER_GUEST = 9
 CLEAR_RETRY = {
     "David_Beckham": "David_Beckham/David_Beckham_0001.jpg",
@@ -161,7 +167,15 @@ def main():
         searches.append(r)
         retries.append({"person": person, "selfie": name, **score(photos_of[person], r.get("photos", []), photo_of_file[name])})
 
-    # offline copy of the same searches at 0.55 (check) and 0.50 (estimate)
+    strangers = []
+    for person, name in manifest["strangers"].items():
+        r = guests.search(name)
+        r["person"], r["kind"] = person, "stranger"
+        searches.append(r)
+        strangers.append(r)
+    answered = [s for s in strangers if s["status"] == 200]
+
+    # offline copy of the same searches at the live threshold (check) and at 0.50 and 0.55
     photo_ids = sorted(set(photo_of_file.values()))
     index = {p: i for i, p in enumerate(photo_ids)}
     faces, face_photo = [], []
@@ -171,7 +185,7 @@ def main():
             face_photo.append(index[photo_of_file[name]])
     faces, face_photo = np.array(faces), np.array(face_photo)
     offline = {}
-    for t in (0.55, 0.50):
+    for t in sorted({THRESHOLD, 0.50, 0.55}):
         out = []
         for row in rows:
             skip = photo_of_file.get(row.get("other_selfie"))
@@ -180,25 +194,30 @@ def main():
         offline[str(t)] = {"summary": stats(out),
                            "per_person": [{k: r[k] for k in ("person", "photos_in_event", "found", "wrong")} for r in out]}
 
-    answered = [s["ms"] for s in searches if s["status"] == 200]
+    times = [s["ms"] for s in searches if s["status"] == 200]
     small = [r for r in rows if r["photos_in_event"] <= 15]
     result = {
         "what": "each person with 10+ photos in the 11,251-photo scale-test event searches for themselves on the hosted app",
-        "api": API, "event": state["event"], "threshold": 0.55, "max_results": MAX_RESULTS,
+        "api": API, "event": state["event"], "threshold": THRESHOLD, "max_results": MAX_RESULTS,
         "measured_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "people": len(people), "refused_selfies": sum(r["selfie_status"] != 200 for r in rows),
         "refused_reasons": dict(collections.Counter(r.get("selfie_error") for r in rows if r["selfie_status"] != 200)),
         "live": stats(rows), "live_10_to_15_photos": stats(small),
-        "search_ms": {"searches": len(answered), "p50": pct(answered, 50), "p95": pct(answered, 95), "max": max(answered)},
-        "offline": {"note": "same models and settings as the app, run on the development machine; 0.50 is an estimate, not live", **offline},
+        "strangers": {"searched": len(strangers), "answered": len(answered),
+                      "with_any_result": sum(bool(s["photos"]) for s in answered),
+                      "false_match_rate": round(sum(bool(s["photos"]) for s in answered) / len(answered), 4),
+                      "wrong_photos": sum(len(s["photos"]) for s in answered)},
+        "search_ms": {"searches": len(times), "p50": pct(times, 50), "p95": pct(times, 95), "max": max(times)},
+        "offline": {"note": "same models and settings as the app, run on the development machine; only the live threshold is checked against the live result, the others are estimates", **offline},
         "clear_selfie_retry": retries,
         "per_person": rows,
     }
-    save("scale_person.json", result)
-    with open(os.path.join(LOGS, "person_searches.jsonl"), "w") as f:
+    suffix = "" if THRESHOLD == 0.55 else "_" + f"{THRESHOLD:.2f}".replace(".", "")
+    save(f"scale_person{suffix}.json", result)
+    with open(os.path.join(LOGS, f"person_searches{suffix}.jsonl"), "w") as f:
         for s in searches:
             f.write(json.dumps(s) + "\n")
-    print(json.dumps({k: result[k] for k in ("people", "refused_selfies", "live", "live_10_to_15_photos", "search_ms")}, indent=1))
+    print(json.dumps({k: result[k] for k in ("people", "refused_selfies", "live", "live_10_to_15_photos", "strangers", "search_ms")}, indent=1))
     print(json.dumps({t: o["summary"] for t, o in offline.items()}, indent=1))
 
 
