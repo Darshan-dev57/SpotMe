@@ -196,9 +196,10 @@ which is the check that it behaves like the app:
 At this size 0.50 is the better setting: it gives up about 3 points of recall for 6 times fewer wrong strangers.
 The app still uses 0.55, the value tuned on the small event; changing it is a separate decision.
 
-One limit showed up on the organizer side: the photo list returns the newest 1,000 photos (a fixed `LIMIT` in
-`EventController`), so in an event this big the other 10,251 cannot be browsed from the organizer page. The
-event's counts and the guest search are not affected.
+One limit showed up on the organizer side: the photo list returned only the newest 1,000 photos (a fixed
+`LIMIT` in `EventController`), so in an event this big the other 10,251 could not be browsed from the organizer
+page. The list now comes in pages of 500 with a "Load more" button. The event's counts and the guest search
+were never affected.
 
 The event is still on the hosted box. The test registered its own organizer account and did not touch the demo
 event.
