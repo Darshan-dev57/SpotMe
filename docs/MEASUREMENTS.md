@@ -203,6 +203,46 @@ event's counts and the guest search are not affected.
 The event is still on the hosted box. The test registered its own organizer account and did not touch the demo
 event.
 
+## Finding one person in the big event (`scale_person.json`)
+
+`eval/scale_person.py` asks the question a guest cares about: if I am in 10 photos of a huge event, do all 10
+come back? It uses the scale-test event above (11,251 photos) and every LFW person with **10 or more photos in
+it: 143 people, 4,011 photos**. Each searched once on the hosted app with the same held-out selfie as before.
+20 of those selfies were refused because they show two faces; those people searched with their first event
+photo that has one face, and that photo is left out of their count.
+
+| At threshold 0.55, live | All 143 people | People with 10 to 15 photos (61) |
+|---|---|---|
+| Photos found | 3,548 of 4,011 | 697 of 720 |
+| Median share of own photos found | 100% | 100% |
+| Got every photo | 103 | 48 |
+| Got 90% or more | 129 | 56 |
+| Got under 50% | 2 | 0 |
+| Wrong photos returned | 125 (for 63 people) | 55 (for 19 people) |
+| Every own photo ranked above every wrong one | 107 | 51 |
+
+The total is pulled down by the 200-result cap: George W Bush has 529 photos and Colin Powell 234, and both
+got 200 results that were nearly all correct. Without those two, 3,151 of 3,248 photos came back.
+Search took 220 ms at p50 and 465 ms at p95 from outside (147 searches). One search took
+7.4 s end to end while the server's own timing for it was under 100 ms, so that wait was on the network.
+
+What the misses look like (checked by eye):
+
+- **Selfie quality decides most bad cases.** David Beckham's held-out photo is of a wax figure: 8 of 30.
+  With a normal front photo of him: 29 of 29. Naomi Watts (head tilted back, laughing) went from 16 of 21 to
+  19 of 20 with a front photo, Roger Federer from 9 of 13 to 11 of 12.
+- **The worst wrong-photo cases are look-alike relatives.** Jeb Bush got all 10 of his photos plus 24 of
+  George W Bush. Serena Williams got 50 of 51 plus 6 of Venus Williams.
+- **Big changes in look are missed.** Anna Kournikova (visor shadow, sun cream, hand on face, very
+  different hair and make-up) found 6 of 11, and only 2 of 10 even with a clear front photo.
+- **Good cases** have a front-facing, evenly lit selfie: John Ashcroft 52 of 52, Jacques Chirac 51 of 51,
+  Arnold Schwarzenegger 41 of 41, all with no wrong photos.
+
+**Offline estimate at 0.50** (same models as the app on the development machine, not live; at 0.55 the same
+copy gave 3,550 found and 124 wrong against the live 3,548 and 125): 3,428 found, 76 people with every photo,
+111 with 90% or more, 5 under 50%, and 47 wrong photos. So 0.50 removes about
+two thirds of the wrong photos, but 120 fewer own photos come back (the mean share per person drops from 96% to 92%).
+
 ## Removing a person from a group photo (`erase_test.json`)
 
 A feasibility test, not part of the app. The question: can free models running on our own machine remove one
@@ -257,6 +297,7 @@ scripts/fetch-demo-photos.sh && python3 eval/hosted_check.py   # hosted.json
 python3 eval/scale_test.py prepare && python3 eval/scale_test.py upload
 python3 eval/scale_test.py search && python3 eval/scale_test.py summary   # scale.json
 python3 eval/scale_sweep.py                                               # scale_sweep.json
+python3 eval/scale_person.py                                              # scale_person.json
 # person removal test (needs onnxruntime and the models listed in erase_test.json)
 python3 eval/erase_test.py --models M --photos P --out O --plan plan.json  # per-photo times, summed into erase_test.json
 ```
