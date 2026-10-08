@@ -47,7 +47,7 @@ export function DemoButton() {
         className="spotme-discover"
       />
       <span className="tabular text-xs text-muted-foreground">
-        {demo.photoCount} public domain photos · no sign-up
+        {demo.photoCount} photos · no sign-up
       </span>
     </div>
   );
