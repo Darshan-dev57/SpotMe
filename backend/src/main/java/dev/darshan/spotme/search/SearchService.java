@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -112,12 +113,23 @@ public class SearchService {
      *   face passes, so this gives the same result as filtering afterwards.
      */
     public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit) {
-        return search(eventId, membershipId, query, maxDistance, limit, Instant.EPOCH);
+        return search(eventId, membershipId, query, maxDistance, limit, null);
     }
 
-    /** The same search, but only photos indexed after a given moment (used for new-photo alerts). */
+    /**
+     * The same search, but when indexedAfter is set only photos indexed after that moment count
+     * (used for new-photo alerts). A normal search passes null and has no time filter at all.
+     */
     public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit,
                               Instant indexedAfter) {
+        List<Object> args = new ArrayList<>(List.of(Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, maxDistance));
+        String newOnly = "";
+        if (indexedAfter != null) {
+            newOnly = "AND p.indexed_at > ?";
+            args.add(Timestamp.from(indexedAfter));
+        }
+        args.add(membershipId);
+        args.add(limit);
         // <=> is pgvector's cosine DISTANCE (1 - cosine similarity): smaller is more alike
         return jdbc.query("""
                 WITH q AS MATERIALIZED (SELECT ?::vector AS v),
@@ -130,16 +142,16 @@ public class SearchService {
                     WHERE f.event_id = ? AND f.model_version = ?
                       AND (f.embedding <=> q.v) <= ?
                       AND p.status = 'ready' AND p.hidden_at IS NULL AND p.suppressed_at IS NULL
-                      AND p.indexed_at > ?
+                      %s
                       AND NOT EXISTS (SELECT 1 FROM wrong_match_reports w WHERE w.photo_id = p.id AND w.membership_id = ?)
                     ORDER BY f.photo_id, distance
                 )
                 SELECT photo_id, face_id, distance, face_count FROM best
                 ORDER BY distance
                 LIMIT ?
-                """, (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getLong(2), rs.getDouble(3), rs.getInt(4)),
-                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, maxDistance,
-                Timestamp.from(indexedAfter), membershipId, limit);
+                """.formatted(newOnly),
+                (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getLong(2), rs.getDouble(3), rs.getInt(4)),
+                args.toArray());
     }
 
     public Result run(UUID eventId, UUID membershipId, byte[] selfie, double maxDistance, int limit)
