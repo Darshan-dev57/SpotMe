@@ -94,11 +94,10 @@ public class Api {
                 .retrieve().toEntity(Map.class);
     }
 
-    /** Body for POST /api/attendee/removals with photos that have no face id (enough for solo photos). */
-    public static Map<String, Object> removal(String mode, String photoId, String note) {
+    /** Body for POST /api/attendee/removals with one photo. */
+    public static Map<String, Object> removal(String photoId, String note) {
         Map<String, Object> body = new java.util.HashMap<>();
-        body.put("mode", mode);
-        body.put("photos", List.of(Map.of("photoId", photoId)));
+        body.put("photoIds", List.of(photoId));
         body.put("note", note);
         return body;
     }

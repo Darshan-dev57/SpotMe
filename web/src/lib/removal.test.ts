@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Match } from "@/lib/api";
-import { photosLeft, splitPhotos } from "@/lib/removal";
+import { groupPhotos, splitPhotos } from "@/lib/removal";
 
 const photo = (id: string, solo: boolean): Match => ({ id, thumbUrl: "", downloadUrl: "", faceId: 1, solo });
 const photos = [photo("a", true), photo("b", false), photo("c", false)];
@@ -12,12 +12,12 @@ describe("splitPhotos", () => {
   });
 });
 
-describe("photosLeft", () => {
-  it("keeps group photos when only solo photos are removed", () => {
-    expect(photosLeft(photos, "solo").map((p) => p.id)).toEqual(["b", "c"]);
+describe("groupPhotos", () => {
+  it("keeps group photos when solo photos are removed", () => {
+    expect(groupPhotos(photos).map((p) => p.id)).toEqual(["b", "c"]);
   });
 
-  it("keeps nothing when the guest is erased everywhere", () => {
-    expect(photosLeft(photos, "erase")).toEqual([]);
+  it("keeps nothing when every photo is solo", () => {
+    expect(groupPhotos([photo("a", true)])).toEqual([]);
   });
 });

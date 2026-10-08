@@ -270,31 +270,13 @@ public class EventController {
             }
             photosByRequest.computeIfAbsent(rs.getObject("request_id"), k -> new ArrayList<>()).add(photo);
         }, id);
-        // group photos the guest asked to be erased from, with the face to erase
-        Map<Object, List<Map<String, Object>>> editsByRequest = new LinkedHashMap<>();
-        jdbc.query("""
-                SELECT e.request_id, e.photo_id, e.status, e.box_x, e.box_y, e.box_w, e.box_h, p.status AS photo_status
-                FROM photo_edits e JOIN photos p ON p.id = e.photo_id
-                WHERE e.event_id = ?
-                """, rs -> {
-            Map<String, Object> edit = new LinkedHashMap<>();
-            UUID photoId = rs.getObject("photo_id", UUID.class);
-            edit.put("photoId", photoId);
-            edit.put("status", rs.getString("status"));
-            edit.put("face", Map.of("x", rs.getInt("box_x"), "y", rs.getInt("box_y"), "w", rs.getInt("box_w"), "h", rs.getInt("box_h")));
-            if (!"purged".equals(rs.getString("photo_status"))) {
-                edit.put("thumbUrl", signer.link(photoId, "thumb", "o:" + organizerId));
-            }
-            editsByRequest.computeIfAbsent(rs.getObject("request_id"), k -> new ArrayList<>()).add(edit);
-        }, id);
         for (Map<String, Object> request : requests) {
             request.put("photos", photosByRequest.getOrDefault(request.get("id"), List.of()));
-            request.put("edits", editsByRequest.getOrDefault(request.get("id"), List.of()));
         }
         return requests;
     }
 
-    /** Approve = solo photos are deleted for good; group photos are edited when erasing is on. */
+    /** Approve = the solo photos are deleted for good. */
     @PostMapping("/{id}/removals/{requestId}/approve")
     public Map<String, Object> approve(@PathVariable UUID id, @PathVariable UUID requestId, HttpServletRequest http) {
         access.requireOwner(id, http);

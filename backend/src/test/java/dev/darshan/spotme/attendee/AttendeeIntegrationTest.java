@@ -83,7 +83,7 @@ class AttendeeIntegrationTest extends IntegrationTest {
     void cannotAskToRemoveAPhotoFromAnotherEvent() {
         String otherEvent = api.createEvent(org, "Elsewhere");
         String foreign = (String) api.upload(otherEvent, org, "glover.jpg", Api.fixture("glover.jpg")).getBody().get("id");
-        var res = api.post("/api/attendee/removals", attendee, Api.removal("solo", foreign, null));
+        var res = api.post("/api/attendee/removals", attendee, Api.removal(foreign, null));
         assertThat(res.getStatusCode().value()).isEqualTo(404);
         assertThat(jdbc.queryForObject("SELECT suppressed_at IS NULL FROM photos WHERE id = ?::uuid", Boolean.class, foreign)).isTrue();
     }
@@ -93,8 +93,8 @@ class AttendeeIntegrationTest extends IntegrationTest {
         String solo = (String) api.upload(event, org, "hurley.jpg", Api.fixture("hurley.jpg")).getBody().get("id");
         drainJobs();
         String bob = api.joinAsAttendee(org, event, "Bob");
-        String first = (String) api.post("/api/attendee/removals", attendee, Api.removal("solo", solo, null)).getBody().get("id");
-        api.post("/api/attendee/removals", bob, Api.removal("solo", solo, null));
+        String first = (String) api.post("/api/attendee/removals", attendee, Api.removal(solo, null)).getBody().get("id");
+        api.post("/api/attendee/removals", bob, Api.removal(solo, null));
 
         api.post("/api/events/" + event + "/removals/" + first + "/reject", org, null);
 
