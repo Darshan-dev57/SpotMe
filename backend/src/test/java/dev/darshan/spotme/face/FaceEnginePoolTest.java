@@ -18,8 +18,7 @@ class FaceEnginePoolTest {
                 new SpotMeProperties.Search(0.55, 100, 10, Duration.ofMinutes(10)),
                 new SpotMeProperties.Worker(false, 1, Duration.ofMinutes(1), Duration.ofMillis(500), 5, Duration.ofSeconds(60)),
                 new SpotMeProperties.Eval(false),
-                new SpotMeProperties.Demo(false, "", 5),
-                new SpotMeProperties.Erase(false));
+                new SpotMeProperties.Demo(false, "", 5));
         var pool = new FaceEnginePool(props);
 
         // with one engine allowed, a failed first attempt must not leave the second caller waiting forever

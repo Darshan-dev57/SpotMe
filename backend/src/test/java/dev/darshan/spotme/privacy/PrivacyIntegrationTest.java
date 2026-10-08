@@ -41,7 +41,7 @@ class PrivacyIntegrationTest extends IntegrationTest {
         String doug = api.joinAsAttendee(org, event, "Doug");
         assertThat(found(doug)).containsExactly(photoId);
 
-        var req = api.post("/api/attendee/removals", doug, Api.removal("solo", photoId, "please remove"));
+        var req = api.post("/api/attendee/removals", doug, Api.removal(photoId, "please remove"));
         assertThat(req.getStatusCode().value()).isEqualTo(201);
         // hidden immediately, before anyone approves
         assertThat(found(doug)).isEmpty();
@@ -74,7 +74,7 @@ class PrivacyIntegrationTest extends IntegrationTest {
         api.post("/api/events/" + event + "/publish", org, null);
         String doug = api.joinAsAttendee(org, event, "Doug");
 
-        String requestId = (String) api.post("/api/attendee/removals", doug, Api.removal("solo", photoId, null)).getBody().get("id");
+        String requestId = (String) api.post("/api/attendee/removals", doug, Api.removal(photoId, null)).getBody().get("id");
         assertThat(found(doug)).isEmpty();
         api.post("/api/events/" + event + "/removals/" + requestId + "/reject", org, null);
         assertThat(found(doug)).containsExactly(photoId);

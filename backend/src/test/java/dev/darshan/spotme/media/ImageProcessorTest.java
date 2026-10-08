@@ -23,8 +23,7 @@ class ImageProcessorTest {
                 new SpotMeProperties.Search(0.6, 100, 10, Duration.ofMinutes(10)),
                 new SpotMeProperties.Worker(false, 1, Duration.ofMinutes(2), Duration.ofMillis(500), 5, Duration.ofSeconds(60)),
                 new SpotMeProperties.Eval(false),
-                new SpotMeProperties.Demo(false, "", 5),
-                new SpotMeProperties.Erase(false));
+                new SpotMeProperties.Demo(false, "", 5));
     }
 
     private final ImageProcessor processor = new ImageProcessor(props(40_000_000));
