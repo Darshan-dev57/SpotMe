@@ -16,7 +16,7 @@ type Stage =
   | { kind: "notice" }
   | { kind: "declined" }
   | { kind: "selfie" }
-  | { kind: "results"; result: SearchResult }
+  | { kind: "results"; result: SearchResult; selfie: Blob }
   | { kind: "left" };
 
 /**
@@ -85,8 +85,8 @@ export default function JoinPage() {
           <div className="pt-8">
             <h1 className="text-2xl font-semibold">No problem</h1>
             <p className="mt-2 max-w-prose text-muted-foreground">
-              Nothing was searched and no photo of you was taken. You can open your link again any time before the
-              event is deleted.
+              Nothing was searched and no photo of you was taken. You can open your link again any time before the event
+              is deleted.
             </p>
           </div>
         )}
@@ -95,7 +95,7 @@ export default function JoinPage() {
           <SelfieStep
             notice={notice}
             token={session}
-            onResult={(result) => setStage({ kind: "results", result })}
+            onResult={(result, selfie) => setStage({ kind: "results", result, selfie })}
             onLostAccess={lostAccess}
           />
         )}
@@ -105,6 +105,7 @@ export default function JoinPage() {
             notice={notice}
             token={session}
             result={stage.result}
+            selfie={stage.selfie}
             onAgain={() => setStage({ kind: "selfie" })}
             onLeft={() => {
               setAttendeeToken(invite, null);

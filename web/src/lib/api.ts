@@ -160,3 +160,12 @@ export type RemovalCreated = {
   erasing: number;
   keptGroupPhotos: number;
 };
+
+export type AlertCheck = {
+  eventTitle: string;
+  expiresAt: string;
+  seenUntil: string;
+  checkedAt: string;
+  newCount: number;
+  photos: { id: string; thumbUrl: string; downloadUrl: string }[];
+};
