@@ -209,11 +209,12 @@ public class AttendeeController {
                 """, me.membershipId());
     }
 
-    /** Withdraw consent: this invite stops working at once and every session is ended. */
+    /** Withdraw consent: this invite stops working at once, every session is ended and alerts are deleted. */
     @PostMapping("/api/attendee/withdraw")
     public Map<String, Object> withdraw(HttpServletRequest http) {
         Principal.Attendee me = AuthInterceptor.attendee(http);
         jdbc.update("UPDATE memberships SET withdrawn_at = now() WHERE id = ?", me.membershipId());
+        jdbc.update("DELETE FROM photo_alerts WHERE membership_id = ?", me.membershipId());
         sessions.endAllForMembership(me.membershipId());
         return Map.of("withdrawn", true);
     }
