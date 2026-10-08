@@ -13,26 +13,16 @@ const SHEET = [
 ];
 
 const STEPS = [
-  {
-    title: "The organizer uploads the album",
-    body: "Hundreds of photos go into a private event. A background worker finds the faces while the upload page keeps moving.",
-  },
-  {
-    title: "You open your invite and take one selfie",
-    body: "You read who is asking, why, and when everything is deleted. Then one selfie. It is matched in memory and thrown away.",
-  },
-  {
-    title: "You get the photos you are likely in",
-    body: "Only from that event. Download the ones you want, report a wrong match, or ask for a photo to be taken down.",
-  },
+  { title: "The organizer uploads the album", body: "Faces are found in the background." },
+  { title: "You open your invite and take one selfie", body: "It is matched in memory, then thrown away." },
+  { title: "You get the photos you are likely in", body: "Only from that event. Download or remove them." },
 ];
 
 const PROMISES = [
-  "Your selfie is never saved. It is turned into numbers in memory, compared, and dropped.",
-  "A search only looks inside the one event you were invited to. There is no global face database.",
-  "Every event has an expiry date, at most 90 days out. Then the photos and face data are deleted.",
-  "Asking to remove a photo hides it straight away. Once the organizer approves, the file itself is deleted.",
-  "A match is a likely match, not proof of who someone is. Group photos also show other guests.",
+  "Your selfie is never saved.",
+  "A search only looks inside the event you were invited to.",
+  "Everything is deleted when the event expires, at most 90 days out.",
+  "Photos you ask to remove are hidden at once.",
 ];
 
 export default function Home() {
@@ -51,8 +41,7 @@ export default function Home() {
               Find yourself in the event album.
             </h1>
             <p className="mt-5 max-w-[34rem] text-lg leading-relaxed text-muted-foreground">
-              The organizer uploads the photos. You take one selfie. SpotMe shows the photos you are probably in, and
-              only from the event you were invited to.
+              One selfie shows the photos you are probably in, only from the event you were invited to.
             </p>
             <div className="mt-8 flex flex-wrap items-start gap-x-4 gap-y-3">
               <DemoButton />
@@ -62,7 +51,6 @@ export default function Home() {
                 </Link>
               </Button>
             </div>
-            <p className="mt-5 text-sm text-muted-foreground">Got an invite? Open the link the organizer sent you.</p>
           </div>
 
           <ContactSheet />
@@ -87,8 +75,7 @@ export default function Home() {
           <div>
             <h2 className="text-2xl font-semibold sm:text-3xl">Built around consent</h2>
             <p className="mt-4 max-w-md leading-relaxed text-muted-foreground">
-              Faces are personal data. SpotMe only works for events where everyone pictured has agreed, and every
-              guest reads the terms before searching.
+              Every guest reads and agrees to the event&apos;s notice before searching.
             </p>
           </div>
           <ul className="divide-y">
@@ -104,9 +91,9 @@ export default function Home() {
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-8">
-          <p>A portfolio project. Not affiliated with any commercial product named SpotMe.</p>
+          <p>A portfolio project.</p>
           <p>
-            Demo photos: NASA, public domain · UI parts from{" "}
+            Demo photos: NASA · UI parts from{" "}
             <a className="underline" href="https://www.obsidianui.dev/">
               ObsidianUI
             </a>
@@ -134,14 +121,13 @@ function ContactSheet() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={frame.src} alt="" className="aspect-square h-full w-full object-cover" />
               </div>
-              <span className="tabular mt-1 block text-[10px] text-background/60">{String(i + 12).padStart(3, "0")}</span>
+              <span className="tabular mt-1 block text-[10px] text-background/60">
+                {String(i + 12).padStart(3, "0")}
+              </span>
             </div>
           ))}
         </div>
       </div>
-      <figcaption className="mt-3 text-sm text-muted-foreground">
-        One selfie of Doug, two likely matches out of five photos. (Demo photos: NASA crew portraits.)
-      </figcaption>
     </figure>
   );
 }

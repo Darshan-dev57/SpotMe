@@ -61,7 +61,7 @@ export function SelfieStep({
       <div className="pt-8">
         <h1 className="text-2xl font-semibold">{notice.eventTitle}</h1>
         <p className="mt-2 max-w-prose text-muted-foreground">
-          You&apos;re in. The organizer is still reviewing the album; come back to this link once it&apos;s published.
+          You&apos;re in. Come back to this link once the album is published.
         </p>
       </div>
     );
@@ -70,17 +70,11 @@ export function SelfieStep({
   return (
     <section className="pt-6">
       <h1 className="text-3xl font-semibold">Take a selfie</h1>
-      <p className="mt-2 max-w-prose text-muted-foreground">
-        Face the camera in good light, with only you in the frame. Glasses are fine; sunglasses and masks make it
-        harder.
-      </p>
+      <p className="mt-2 max-w-prose text-muted-foreground">Good light, only you in the frame.</p>
 
       {notice.demo && (
         <div className="mt-6">
-          <h2 className="font-semibold">Try it with a sample selfie</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Official NASA portraits. None of them is one of the album&apos;s photos.
-          </p>
+          <h2 className="font-semibold">Try a sample selfie</h2>
           <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
             {DEMO_SELFIES.map((s) => (
               <li key={s.src}>
@@ -137,7 +131,7 @@ export function SelfieStep({
           <Button size="lg" variant="outline" onClick={() => library.current?.click()} disabled={busy}>
             <ImageUp /> Choose a photo
           </Button>
-          <p className="text-sm text-muted-foreground">The selfie is used for this one search and then discarded.</p>
+          <p className="text-sm text-muted-foreground">Used for this search only, then deleted.</p>
         </div>
       </div>
 

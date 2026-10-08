@@ -76,7 +76,7 @@ export function Uploader({ eventId, token, onUploaded }: { eventId: string; toke
         <ImagePlus className="size-7 text-muted-foreground" aria-hidden="true" />
         <div>
           <p className="font-medium">Drop photos here</p>
-          <p className="mt-1 text-sm text-muted-foreground">JPEG or PNG, up to 20 MB each. Location data is removed.</p>
+          <p className="mt-1 text-sm text-muted-foreground">JPEG or PNG, up to 20 MB each.</p>
         </div>
         <Button type="button" variant="outline" onClick={() => input.current?.click()}>
           Choose photos
