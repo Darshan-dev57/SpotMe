@@ -26,7 +26,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 18. [Hosting on one small box with a start script](#18-hosting-on-one-small-box-with-a-start-script)
 19. [Integration tests against real Postgres](#19-integration-tests-against-real-postgres)
 20. [A public demo with public domain photos](#20-a-public-demo-with-public-domain-photos)
-21. [Two removal choices, with erasing behind a switch](#21-two-removal-choices-with-erasing-behind-a-switch)
+21. [Removal takes only the guest's solo photos](#21-removal-takes-only-the-guests-solo-photos)
 22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
 
 ---
@@ -290,24 +290,17 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   than how it performs on a real party.
 - **What would change it:** a consented set of real event photos.
 
-## 21. Two removal choices, with erasing behind a switch
+## 21. Removal takes only the guest's solo photos
 
-- **Choice:** a guest who wants out picks one of two choices for the photos they were found in.
-  *Only my solo photos* removes the photos where they are the only face and leaves group photos alone.
-  *Erase me completely* also cuts them out of group photos: each group photo gets a `photo_edits` row with the
-  matched face, stays hidden until an `ERASE_PERSON` job swaps in the edited copy and drops that face's vector,
-  and then comes back for everyone else. Erasing is off (`spotme.erase.enabled=false`) and the job calls a
-  `PersonEraser` that is not set up yet, so today guests see the choice as "not available yet".
+- **Choice:** a guest who asks to be removed loses the photos where they are the only face; group photos stay
+  as they are. They are hidden at once and deleted when the organizer approves.
 - **Why:** deleting a whole group photo because one person asked takes it away from everyone else in it.
-  Blurring the face was tried in the design and looks bad. Erasing needs an inpainting model; the test in
-  `eval/erase_test.py` shows it looks natural when the person stands apart and smudges when they overlap
-  others, and it needs about 1 GB of memory, which the hosted box does not have.
+  Blurring the face looks bad.
+- **Dropped:** *Erase me completely* (cutting the guest out of group photos). The self-hosted model needs
+  about 1 to 2 GB of RAM, which the hosted box does not have, and Gemini image editing is paid only. The
+  test stays in `eval/erase_test.py` and `docs/MEASUREMENTS.md` as a record.
 - **Alternative:** remove whole photos (the earlier behaviour), or blur the face.
-- **Tradeoff:** the face to erase comes from the guest's search result (`faceId`), not from a stored match,
-  because the selfie is not kept. The server checks that the face belongs to the photo, and the organizer
-  approves every request, the same safeguard as for deletion.
-- **What would change it:** the organizer approving the erase samples and a machine with about 1 GB free for
-  the job; then a real `PersonEraser` (ONNX Runtime for Java with the tested models) replaces the stub.
+- **What would change it:** a free image-editing model that fits in a few hundred MB.
 
 ## 22. New-photo alerts as an opt-in private link
 
