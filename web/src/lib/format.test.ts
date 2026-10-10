@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { daysLeft, photoError, plural } from "./format";
+import { daysLeft, driveError, driveProgress, photoError, plural } from "./format";
 
 describe("plural", () => {
   it("uses the singular only for exactly one", () => {
@@ -34,5 +34,22 @@ describe("photoError", () => {
   it("has a fallback for codes it does not know", () => {
     expect(photoError("something_new")).toBe("Couldn't process");
     expect(photoError(null)).toBe("Couldn't process");
+  });
+});
+
+describe("driveError", () => {
+  it("tells the organizer how to fix a private folder", () => {
+    expect(driveError("folder_not_public")).toContain("Anyone with the link");
+  });
+
+  it("falls back to the photo errors", () => {
+    expect(driveError("too_many_pixels")).toBe("Too many pixels");
+  });
+});
+
+describe("driveProgress", () => {
+  it("counts imported, duplicate and failed files as done", () => {
+    expect(driveProgress({ found: 10, imported: 5, duplicates: 2, failed: 1 })).toBe(80);
+    expect(driveProgress({ found: 0, imported: 0, duplicates: 0, failed: 0 })).toBe(0);
   });
 });
