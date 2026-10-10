@@ -66,12 +66,24 @@ export function Results({
     toast.success("Thanks. That photo is hidden from your results.");
   }
 
+  // Removal starts with nothing selected, so a guest only picks the photos to take down.
+  function startRemove() {
+    setSelected(new Set());
+    setMode("remove");
+  }
+
+  function cancelRemove() {
+    setSelected(new Set(photos.map((p) => p.id)));
+    setMode("browse");
+  }
+
   async function requestRemoval(form: FormData) {
     setBusy(true);
     try {
       await api("/api/attendee/removals", { token, json: { photoIds: [...selected], note: form.get("note") || null } });
-      setPhotos((prev) => prev.filter((p) => !selected.has(p.id)));
-      setSelected(new Set());
+      const left = photos.filter((p) => !selected.has(p.id));
+      setPhotos(left);
+      setSelected(new Set(left.map((p) => p.id)));
       setMode("removed");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not send the request.");
@@ -154,7 +166,7 @@ export function Results({
                         <Check className="size-4" />
                       </span>
                     )}
-                    {mode === "browse" && (
+                    {mode !== "remove" && (
                       <div className="mt-1 flex justify-end gap-0.5">
                         <button
                           type="button"
@@ -193,7 +205,7 @@ export function Results({
               <Button size="lg" onClick={downloadZip} disabled={selected.size === 0 || busy}>
                 {busy ? <Spinner /> : <Download />} Download {selected.size > 0 ? plural(selected.size, "photo") : ""}
               </Button>
-              <Button size="lg" variant="ghost" onClick={() => setMode("remove")}>
+              <Button size="lg" variant="ghost" onClick={startRemove}>
                 <Trash2 /> Remove photos of me
               </Button>
             </div>
@@ -211,7 +223,7 @@ export function Results({
                 <Button type="submit" variant="destructive" disabled={selected.size === 0 || busy}>
                   {busy && <Spinner />} Send request
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setMode("browse")}>
+                <Button type="button" variant="ghost" onClick={cancelRemove}>
                   Cancel
                 </Button>
               </div>
