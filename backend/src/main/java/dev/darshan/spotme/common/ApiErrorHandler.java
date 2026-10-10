@@ -58,7 +58,7 @@ public class ApiErrorHandler {
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<Map<String, String>> wrongType(HttpMediaTypeNotSupportedException e) {
-        return body(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_type", "Send a JPEG or PNG photo.");
+        return body(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_type", "Send the photo as a file upload.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

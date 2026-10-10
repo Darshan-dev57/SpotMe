@@ -214,7 +214,8 @@ scripts/        model and demo photo downloads
 - New-photo alerts are in the app only: a guest sees them by opening their private link, nothing is pushed.
 - Erasing a guest from group photos is built but switched off: the inpainting it needs looks natural only when
   the person stands apart, and needs about 1 GB of memory ([test results](docs/MEASUREMENTS.md)).
-- JPEG and PNG only. HEIC photos must be converted first.
+- HEIC and AVIF photos are converted by the organizer page, so they must be uploaded there (not straight to
+  the API). Animated GIFs keep only their first frame.
 - Invite links are not tied to a verified identity. A forwarded link works until the organizer revokes it,
   and a match is a likely match, not proof of identity.
 
@@ -239,5 +240,8 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 ## License
 
 [MIT](LICENSE)
+
+The organizer page loads [heic-to](https://github.com/hoppergee/heic-to) (LGPL-3.0, built on libheif) as a
+separate file, only when a HEIC photo is picked. The face models are OpenCV Zoo's YuNet (MIT) and SFace (Apache 2.0).
 
 SpotMe is a personal project. It is not affiliated with any company or product of the same name.

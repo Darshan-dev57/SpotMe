@@ -136,7 +136,7 @@ export function SelfieStep({
       </div>
 
       <input ref={camera} type="file" accept="image/*" capture="user" hidden onChange={(e) => search(e.target.files?.[0])} />
-      <input ref={library} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => search(e.target.files?.[0])} />
+      <input ref={library} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => search(e.target.files?.[0])} />
     </section>
   );
 }
