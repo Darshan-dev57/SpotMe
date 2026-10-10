@@ -1,0 +1,205 @@
+{
+ "what": "20 group photos from Wikimedia Commons used to test removing one person; images are not committed",
+ "photos": [
+  {
+   "file": "p01.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:HMP_Norwich_team_with_Chris_Riddell_-_Photo_by_Rolf_Marriott.jpg",
+   "license": "CC BY 2.0",
+   "author": "Rolf Marriott",
+   "face_index": 0,
+   "case": "side",
+   "result": "smudge",
+   "note": "dark smear where she stood"
+  },
+  {
+   "file": "p02.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Group_photo_of_female_volunteers.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "Kunokuno",
+   "face_index": 3,
+   "case": "side",
+   "result": "natural",
+   "note": "clean"
+  },
+  {
+   "file": "p03.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Students_posing_at_the_Sq_Wikipedia_Birthday.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "Vyolltsa",
+   "face_index": 2,
+   "case": "middle",
+   "result": "natural",
+   "note": "clean"
+  },
+  {
+   "file": "p04.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Japanese_junior_high_school_girls_posing_for_a_peace_in_front_of_a_temple.jpg",
+   "license": "CC0",
+   "author": "Michelle_Maria",
+   "face_index": 1,
+   "case": "overlap",
+   "result": "small flaw",
+   "note": "faint leftover near the next girl's arm"
+  },
+  {
+   "file": "p05.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Group_of_People_Posing_With_Clam_Buckets_and_Clam_Guns_at_a_Beach.jpeg",
+   "license": "CC BY-SA 2.0",
+   "author": "Laurel F from Seattle, WA",
+   "face_index": 0,
+   "case": "side",
+   "result": "small flaw",
+   "note": "the tool he held is left behind"
+  },
+  {
+   "file": "p06.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DSC_6955_Three_friends_smiling_on_the_golf_course_arms_around_each_other_after_a_great_round.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 2,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "friend's shoulder smeared where they hugged"
+  },
+  {
+   "file": "p07.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Smart_Beach_Tour_2015_-_Sandra_Seyfferth_Anni_Schumacher_II.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "Matthias Zepper",
+   "face_index": 1,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "her hand stays on her friend's shoulder"
+  },
+  {
+   "file": "p08.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Three_Friends,_Addis_(15166406435).jpg",
+   "license": "CC BY-SA 2.0",
+   "author": "Rod Waddington from Kergunyah, Australia",
+   "face_index": 2,
+   "case": "side",
+   "result": "smudge",
+   "note": "colour smear from the next person"
+  },
+  {
+   "file": "p09.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Two_Women_Pose_(35871168511).jpg",
+   "license": "CC BY-SA 2.0",
+   "author": "Chris Hunkeler from Carlsbad, California, USA",
+   "face_index": 3,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "ghost and part of his race bib left"
+  },
+  {
+   "file": "p10.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Employer_Supported_Policing_Award_Winner_-_The_First_Group,_South_Yorkshire,_2015.jpg",
+   "license": "CC BY 2.0",
+   "author": "UK Home Office",
+   "face_index": 0,
+   "case": "side",
+   "result": "small flaw",
+   "note": "sign text behind her is cut"
+  },
+  {
+   "file": "p11.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Wikimania_2015-Tuesday-Group_photo_of_volunteers.jpg",
+   "license": "CC0",
+   "author": "Romaine",
+   "face_index": 18,
+   "case": "side",
+   "result": "small flaw",
+   "note": "small smear at the neighbour's arm"
+  },
+  {
+   "file": "p12.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DSC_7089_Three_friends_laugh_and_toast_over_drinks_during_a_lively_evening_dinner_at_a_cozy_plant-filled_restaurant.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 4,
+   "case": "middle",
+   "result": "small flaw",
+   "note": "soft blurry patch at the table"
+  },
+  {
+   "file": "p13.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DSC_7238_Four_friends_share_wine_and_conversation_at_a_cozy_brickwalled_restaurant_seated_around_a_table_set_with_bottles_glasses_and_a_red_tablecloth.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 1,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "smear, and his lower half below the arm is left"
+  },
+  {
+   "file": "p14.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Wicnic_Wikimedia_NYC_Meetup_Group_Photo.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "AbhiSuryawanshi",
+   "face_index": 24,
+   "case": "side",
+   "result": "natural",
+   "note": "clean"
+  },
+  {
+   "file": "p15.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DZ6_0101_Two_friends_pose_and_smile_while_seated_on_stools_at_a_lively_neon-lit_outdoor_night_market.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 0,
+   "case": "overlap",
+   "result": "natural",
+   "note": "clean"
+  },
+  {
+   "file": "p16.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DSC_9313_A_lively_group_of_friends_striking_triumphant_poses_in_front_of_a_patriotic_vintage-style_wagon_-_ready_for_a_road_trip_and_good_times.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 0,
+   "case": "side",
+   "result": "small flaw",
+   "note": "his shadow on the ground is left"
+  },
+  {
+   "file": "p17.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Wikimania_2014_volunteers_after_the_group_photo_06.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "Chris McKenna",
+   "face_index": 6,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "crowd: fills with a blurred body"
+  },
+  {
+   "file": "p18.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:Nature_is_more_fun_with_friends_(23552320884).jpg",
+   "license": "CC BY 2.0",
+   "author": "vastateparksstaff",
+   "face_index": 0,
+   "case": "middle",
+   "result": "smudge",
+   "note": "blurry gap among the legs behind"
+  },
+  {
+   "file": "p19.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:SH_Friends_Group_(15348923891).jpg",
+   "license": "CC BY 2.0",
+   "author": "vastateparksstaff",
+   "face_index": 13,
+   "case": "middle",
+   "result": "small flaw",
+   "note": "slight smear on the bench"
+  },
+  {
+   "file": "p20.jpg",
+   "source": "https://commons.wikimedia.org/wiki/File:DZ6_0704_Birthday_celebrations_and_smiles_all_around_-_friends_gather_in_pink_for_a_fun_night_by_the_pool_table.jpg",
+   "license": "CC BY-SA 4.0",
+   "author": "PattayaPatrol",
+   "face_index": 4,
+   "case": "overlap",
+   "result": "smudge",
+   "note": "crowd: pink blob"
+  }
+ ]
+}
