@@ -128,10 +128,12 @@ export type Invite = {
 export type RemovalRequest = {
   id: string;
   status: "received" | "approved" | "rejected" | "completed";
+  mode: "photos" | "solo" | "erase";
   note: string | null;
   requestedBy: string | null;
   createdAt: string;
   photos: { id: string; status: string; thumbUrl?: string }[];
+  edits: { photoId: string; status: "waiting" | "queued" | "done" | "failed" | "cancelled"; thumbUrl?: string }[];
 };
 
 export type Notice = {
@@ -146,5 +148,15 @@ export type Notice = {
   demo: boolean;
 };
 
-export type Match = { id: string; thumbUrl: string; downloadUrl: string };
-export type SearchResult = { count: number; photos: Match[]; stillIndexing: boolean };
+/** faceId: the face that matched (needed to erase it); solo: the guest is the only face in the photo. */
+export type Match = { id: string; thumbUrl: string; downloadUrl: string; faceId: number; solo: boolean };
+export type SearchResult = { count: number; photos: Match[]; stillIndexing: boolean; eraseAvailable: boolean };
+
+export type RemovalMode = "solo" | "erase";
+export type RemovalCreated = {
+  id: string;
+  mode: RemovalMode;
+  hidden: number;
+  erasing: number;
+  keptGroupPhotos: number;
+};

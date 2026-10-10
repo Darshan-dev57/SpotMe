@@ -83,20 +83,22 @@ class AttendeeIntegrationTest extends IntegrationTest {
     void cannotAskToRemoveAPhotoFromAnotherEvent() {
         String otherEvent = api.createEvent(org, "Elsewhere");
         String foreign = (String) api.upload(otherEvent, org, "glover.jpg", Api.fixture("glover.jpg")).getBody().get("id");
-        var res = api.post("/api/attendee/removals", attendee, Map.of("photoIds", List.of(foreign)));
+        var res = api.post("/api/attendee/removals", attendee, Api.removal("solo", foreign, null));
         assertThat(res.getStatusCode().value()).isEqualTo(404);
         assertThat(jdbc.queryForObject("SELECT suppressed_at IS NULL FROM photos WHERE id = ?::uuid", Boolean.class, foreign)).isTrue();
     }
 
     @Test
     void rejectingOneRequestKeepsAPhotoHiddenWhileAnotherIsOpen() {
+        String solo = (String) api.upload(event, org, "hurley.jpg", Api.fixture("hurley.jpg")).getBody().get("id");
+        drainJobs();
         String bob = api.joinAsAttendee(org, event, "Bob");
-        String first = (String) api.post("/api/attendee/removals", attendee, Map.of("photoIds", List.of(groupPhoto))).getBody().get("id");
-        api.post("/api/attendee/removals", bob, Map.of("photoIds", List.of(groupPhoto)));
+        String first = (String) api.post("/api/attendee/removals", attendee, Api.removal("solo", solo, null)).getBody().get("id");
+        api.post("/api/attendee/removals", bob, Api.removal("solo", solo, null));
 
         api.post("/api/events/" + event + "/removals/" + first + "/reject", org, null);
 
-        assertThat(jdbc.queryForObject("SELECT suppressed_at IS NOT NULL FROM photos WHERE id = ?::uuid", Boolean.class, groupPhoto)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT suppressed_at IS NOT NULL FROM photos WHERE id = ?::uuid", Boolean.class, solo)).isTrue();
         assertThat(api.getList("/api/events/" + event + "/removals", org)).hasSize(2);
     }
 

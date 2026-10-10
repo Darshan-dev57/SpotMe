@@ -9,6 +9,8 @@ import org.opencv.core.Mat;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -33,7 +35,15 @@ public class SearchService {
         }
     }
 
-    public record Match(UUID photoId, double distance) {
+    /**
+     * One matching photo. faceId is the face in it that matched best (the one to erase if the guest
+     * asks), faceCount how many faces the photo has (1 means the guest is alone in it).
+     */
+    public record Match(UUID photoId, long faceId, double distance, int faceCount) {
+
+        public boolean solo() {
+            return faceCount <= 1;
+        }
     }
 
     /** Timings in milliseconds, sent back in the Server-Timing header. */
@@ -91,33 +101,45 @@ public class SearchService {
 
     /**
      * Exact (no index) nearest-photo search, always filtered to one event.
-     * A photo matches if ANY face in it is close enough; we return its best distance.
+     * A photo matches if ANY face in it is close enough; we return its best face and distance.
      * Hidden, suppressed and "wrong match"-reported photos are left out.
      *
      * Two details keep this fast in big events (measured on the hosted box with 12,800 faces in one
      * event: the SQL went from about 130 ms to a few ms):
      * - MATERIALIZED turns the selfie's text into a vector once. Without it, Postgres can re-run the
      *   text-to-vector cast for every face row once the JDBC driver switches to a prepared statement.
-     * - The distance limit is in WHERE, so only close faces reach the join and the GROUP BY. A photo
-     *   passes if any face passes, so this gives the same result as filtering after grouping.
+     * - The distance limit is in WHERE, so only close faces reach DISTINCT ON. A photo passes if any
+     *   face passes, so this gives the same result as filtering afterwards.
      */
     public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit) {
+        return search(eventId, membershipId, query, maxDistance, limit, Instant.EPOCH);
+    }
+
+    /** The same search, but only photos indexed after a given moment (used for new-photo alerts). */
+    public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit,
+                              Instant indexedAfter) {
         // <=> is pgvector's cosine DISTANCE (1 - cosine similarity): smaller is more alike
         return jdbc.query("""
-                WITH q AS MATERIALIZED (SELECT ?::vector AS v)
-                SELECT f.photo_id, min(f.embedding <=> q.v) AS distance
-                FROM faces f
-                CROSS JOIN q
-                JOIN photos p ON p.id = f.photo_id
-                WHERE f.event_id = ? AND f.model_version = ?
-                  AND (f.embedding <=> q.v) <= ?
-                  AND p.status = 'ready' AND p.hidden_at IS NULL AND p.suppressed_at IS NULL
-                  AND NOT EXISTS (SELECT 1 FROM wrong_match_reports w WHERE w.photo_id = p.id AND w.membership_id = ?)
-                GROUP BY f.photo_id
+                WITH q AS MATERIALIZED (SELECT ?::vector AS v),
+                best AS (
+                    SELECT DISTINCT ON (f.photo_id) f.photo_id, f.id AS face_id,
+                           (f.embedding <=> q.v) AS distance, p.face_count
+                    FROM faces f
+                    CROSS JOIN q
+                    JOIN photos p ON p.id = f.photo_id
+                    WHERE f.event_id = ? AND f.model_version = ?
+                      AND (f.embedding <=> q.v) <= ?
+                      AND p.status = 'ready' AND p.hidden_at IS NULL AND p.suppressed_at IS NULL
+                      AND p.indexed_at > ?
+                      AND NOT EXISTS (SELECT 1 FROM wrong_match_reports w WHERE w.photo_id = p.id AND w.membership_id = ?)
+                    ORDER BY f.photo_id, distance
+                )
+                SELECT photo_id, face_id, distance, face_count FROM best
                 ORDER BY distance
                 LIMIT ?
-                """, (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getDouble(2)),
-                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, maxDistance, membershipId, limit);
+                """, (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getLong(2), rs.getDouble(3), rs.getInt(4)),
+                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, maxDistance,
+                Timestamp.from(indexedAfter), membershipId, limit);
     }
 
     public Result run(UUID eventId, UUID membershipId, byte[] selfie, double maxDistance, int limit)
