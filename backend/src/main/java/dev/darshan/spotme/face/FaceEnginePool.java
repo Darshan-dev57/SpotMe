@@ -42,8 +42,9 @@ public class FaceEnginePool {
         }
         synchronized (this) {
             if (created < props.face().engines()) {
+                FaceEngine fresh = newEngine(); // count it only once it exists, so a failure can't use up a slot
                 created++;
-                return newEngine();
+                return fresh;
             }
         }
         try {
