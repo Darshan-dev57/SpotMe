@@ -29,6 +29,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 21. [Removal takes only the guest's solo photos](#21-removal-takes-only-the-guests-solo-photos)
 22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
 23. [HEIC and AVIF are converted in the browser](#23-heic-and-avif-are-converted-in-the-browser)
+24. [Google Drive import without an API key](#24-google-drive-import-without-an-api-key)
 
 ---
 
@@ -335,3 +336,20 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Tradeoff:** a HEIC uploaded straight to the API (not through the page) is refused with a message, and the
   HEIC decoder adds a 3 MB download the first time it is needed.
 - **What would change it:** a maintained Java HEIC/AVIF decoder, or a bigger server.
+
+## 24. Google Drive import without an API key
+
+- **Choice:** the server reads a public folder through the page Google serves for embedding shared folders
+  (`embeddedfolderview`), downloads each file from the public download link, and falls back to Google's own
+  4000 px JPEG rendering for files over our limits or in formats we can't read. Each photo is one job on the
+  existing queue, and import jobs run at a lower priority than indexing.
+- **Why:** the Drive API needs a Google Cloud project and an API key (or OAuth) that the organizer would have to
+  set up; for a folder that is already public, the public pages give the same file list and files. One job per
+  photo reuses the queue's retries, leases and crash recovery and keeps memory flat. The lower priority lets
+  photos appear and get indexed while the import is still running.
+- **Alternative:** the Drive API with a key or Google sign-in; or asking organizers to download the folder and
+  upload it (folder upload now makes that easy too).
+- **Tradeoff:** the embedded page is not a documented API, so Google can change it; private folders can't be
+  imported. The HTTP client is locked to Google's hosts so a pasted link can't be used to reach anything else.
+- **What would change it:** Google changing or blocking the page, or organizers needing private folders; then
+  the Drive API with Google sign-in would replace the listing step and keep the rest.

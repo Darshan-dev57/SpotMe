@@ -13,6 +13,7 @@ export that the same application serves, so in production a single process answe
 - [Flow 2: the worker indexes a photo](#flow-2-the-worker-indexes-a-photo)
 - [Flow 3: a guest searches with a selfie](#flow-3-a-guest-searches-with-a-selfie)
 - [Flow 4: removal, withdrawal and expiry](#flow-4-removal-withdrawal-and-expiry)
+- [Flow 5: importing a Google Drive folder](#flow-5-importing-a-google-drive-folder)
 - [Security and privacy model](#security-and-privacy-model)
 - [Process roles and configuration](#process-roles-and-configuration)
 - [Hosted deployment](#hosted-deployment)
@@ -49,7 +50,9 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | `sessions` | hash of a bearer token, organizer or membership, expiry | exactly one of the two owners is set (a `CHECK` constraint) |
 | `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
 | `faces` | box, detection score, `embedding vector(128)`, `model_version` | indexed on `(event_id, model_version)`; no face exists outside its event |
-| `jobs` | kind, target, dedupe key, state, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases |
+| `jobs` | kind, target, dedupe key, state, priority, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases; Drive import jobs have priority 1, everything else 0 |
+| `drive_imports` | event, Drive folder id, status, files found, skipped, over the limit, error | one running import per event |
+| `drive_import_files` | one photo in an import: Drive file id, name, type, status, resulting photo, error | `UNIQUE (import_id, file_id)` |
 | `removal_requests` | the solo photos to delete, note, decision | |
 | `photo_alerts` | one guest's face vector, hash of the alert link token, `seen_until` | only after the guest opts in; deleted with the event, on withdrawal, revocation, a notice change or when turned off |
 | `wrong_match_reports` | guest + photo | hides that photo from that guest's results only |
@@ -78,7 +81,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 ![Job states](images/jobs.png)
 
 1. Each worker thread claims a job:
-   `UPDATE jobs ... WHERE id IN (SELECT id FROM jobs WHERE state = 'queued' AND run_after <= now() ORDER BY run_after, id LIMIT n FOR UPDATE SKIP LOCKED)`,
+   `UPDATE jobs ... WHERE id IN (SELECT id FROM jobs WHERE state = 'queued' AND run_after <= now() ORDER BY priority, run_after, id LIMIT n FOR UPDATE SKIP LOCKED)`,
    setting `state = 'running'`, a 60 s lease and a new random `claim_token`.
 2. The slow half runs with no transaction open: read the file, scale it so the long side is at most 1280 px,
    detect faces with YuNet (score 0.8 or higher, at least 40 px), align and crop each face, and embed it with
@@ -128,6 +131,32 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
   `deletion_epoch` (so in-flight indexing results are thrown away), then a `PURGE_EVENT` job removes files,
   vectors, photos, memberships and requests, leaving a tombstone event row with status `purged`.
 
+## Flow 5: importing a Google Drive folder
+
+No Google API key and no Google account are involved; the folder must be shared as "Anyone with the link".
+
+1. The organizer pastes a folder link. `DriveLinks` accepts only `https://drive.google.com/...` folder links
+   and takes out the folder id. `POST /api/events/{id}/drive-imports` saves a `drive_imports` row (`listing`)
+   and a `DRIVE_LIST` job in one transaction, and refuses a second import while one is running.
+2. `DRIVE_LIST` reads `https://drive.google.com/embeddedfolderview?id=<folder>`, the page Google serves for
+   embedding a shared folder, and parses one entry per file or subfolder (id, name, type). Subfolders are read
+   breadth first, up to 5 levels and 50 folders. Non-image files are counted as skipped, photos past 2,000 as
+   over the limit. One transaction saves a `drive_import_files` row and a `DRIVE_FILE` job per photo.
+3. Each `DRIVE_FILE` job imports one photo, so memory stays flat on the small box. A type the server reads
+   (JPEG, PNG, WebP, TIFF, BMP, GIF) is downloaded from `drive.google.com/uc?export=download&id=<file>` and
+   handed to `PhotoIntake`, the same path as an upload. When the original is over 20 MB, over the pixel cap,
+   or a type the server can't read (HEIC, camera RAW), Google's own JPEG rendering
+   (`lh3.googleusercontent.com/d/<file>=s4000`, at most 4000 px on the longest side) is used instead.
+4. The file row becomes `imported`, `duplicate` or `failed` with a reason, and the import is `done` when no
+   file is left queued. The page polls `GET /api/events/{id}/drive-imports` every 3 seconds for the counts.
+5. Import jobs have priority 1 and the claim orders by priority first, so each imported photo is indexed
+   right after it arrives and an organizer's own uploads never wait behind a big import.
+
+The HTTP client follows redirects by hand and checks every hop: https only, port 443, and only the hosts
+`drive.google.com`, `drive.usercontent.google.com` and `lh3.googleusercontent.com`. It has a 10 s connect and
+30 s request timeout and stops reading a body past the byte limit, so a pasted link can't make the server fetch
+anything else (SSRF) or fill its memory.
+
 ## Security and privacy model
 
 | Concern | How it is handled |
@@ -139,6 +168,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | Passwords | BCrypt; 10 login attempts per email per minute; the same answer for unknown email and wrong password |
 | Photo access | HMAC-signed links with subject and expiry, plus a live access check when the link is used |
 | Uploads | Type from magic bytes, pixel cap before decoding, re-encode strips EXIF, generated storage keys |
+| Drive import | Only Google's hosts over https, every redirect checked, timeouts and a byte limit; nothing else is fetched |
 | Retention | Expiry at most 90 days; purge removes files and vectors; removal requests hide photos immediately |
 | Organizer duty | Creating an event requires confirming that everyone pictured is an adult and has agreed |
 
@@ -197,6 +227,10 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
   filtered index.
 - **The hosted box is small.** Peak memory while indexing (467 to 493 MB) is about the same as its 473 MB of
   RAM, so it relies on swap; photos are capped at 16 megapixels and 2,000 per event there.
+- **Drive import depends on a Google page.** The embedded folder page is not an official API and can change.
+  A folder of 149 photos (13 plus a 136-photo subfolder) listed whole; whether a single folder with several
+  hundred files lists in one page has not been tested. The import uses one worker thread and Google's
+  download speed, so a 2,000-photo folder takes a while.
 - **Alerts are pull, not push.** A guest who opts in sees new photos when they open their private link; nothing
   is sent to them.
 - **Guests cannot be erased from group photos.** Removal takes only their solo photos (decision 21).
