@@ -1,0 +1,66 @@
+{
+ "what": "offline threshold sweep on the scale-test split, same models and settings as the app",
+ "event_photos": 11253,
+ "event_faces": 12941,
+ "queries": 1980,
+ "refused_selfies": 265,
+ "strangers_answered": 271,
+ "thresholds": [
+  {
+   "threshold": 0.4,
+   "precision": 0.9892,
+   "recall": 0.6017,
+   "photos_wrong": 49,
+   "strangers_with_any_result": 3,
+   "stranger_false_match_rate": 0.0111
+  },
+  {
+   "threshold": 0.45,
+   "precision": 0.9855,
+   "recall": 0.6983,
+   "photos_wrong": 77,
+   "strangers_with_any_result": 5,
+   "stranger_false_match_rate": 0.0185
+  },
+  {
+   "threshold": 0.5,
+   "precision": 0.9779,
+   "recall": 0.7552,
+   "photos_wrong": 128,
+   "strangers_with_any_result": 8,
+   "stranger_false_match_rate": 0.0295
+  },
+  {
+   "threshold": 0.525,
+   "precision": 0.9613,
+   "recall": 0.7734,
+   "photos_wrong": 233,
+   "strangers_with_any_result": 23,
+   "stranger_false_match_rate": 0.0849
+  },
+  {
+   "threshold": 0.55,
+   "precision": 0.917,
+   "recall": 0.7838,
+   "photos_wrong": 531,
+   "strangers_with_any_result": 48,
+   "stranger_false_match_rate": 0.1771
+  },
+  {
+   "threshold": 0.575,
+   "precision": 0.81,
+   "recall": 0.7942,
+   "photos_wrong": 1394,
+   "strangers_with_any_result": 103,
+   "stranger_false_match_rate": 0.3801
+  },
+  {
+   "threshold": 0.6,
+   "precision": 0.6056,
+   "recall": 0.8021,
+   "photos_wrong": 3909,
+   "strangers_with_any_result": 186,
+   "stranger_false_match_rate": 0.6863
+  }
+ ]
+}

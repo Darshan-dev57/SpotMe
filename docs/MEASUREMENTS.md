@@ -8,7 +8,7 @@ what each file measured, on what machine, and how to reproduce it. The scripts a
 | Name | What it is | Used for |
 |---|---|---|
 | Development machine | Debian 12, 4 vCPUs, 8 GB RAM, shared with other work (load average 2 to 4.6 during runs) | upload, indexing, crash recovery, accuracy, latency, vector search, memory |
-| Hosted demo box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json` |
+| Hosted demo box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json`, `scale.json` |
 
 Because the development machine was shared, treat its throughput numbers as conservative.
 
@@ -124,6 +124,85 @@ three sample selfies, then deleted the event.
 | SQL search (server) | p50 1.4 ms, p95 1.8 ms |
 | Matches | Bob Behnken 15 photos, Doug Hurley 4, Victor Glover 0 (he is not in the album) |
 
+## Scale test on the hosted box (`scale.json`, `scale_sweep.json`)
+
+`eval/scale_test.py` drove https://spotme.sites.tab.bot from outside, through the same API the web pages use,
+with the **full LFW set**: 13,233 photos of 5,749 people. Every person with 2 or more photos kept one back as
+their selfie (1,680 people) and 300 people with a single photo were kept out of the event to search as strangers
+(seed 11). The other 11,253 photos went into one event called "Scale test". Two of them are byte-identical files,
+so the event holds 11,251 photos with 12,940 faces. LFW photos are 250x250 px news photos, smaller than the
+composites above, so throughput numbers are not comparable with the development machine.
+
+**Upload and indexing** (4 uploads at a time, like the organizer page):
+
+| Measure | Result |
+|---|---|
+| Upload of 11,253 photos | 456.3 s (1,479.6 photos per minute), 0 failed, 0 retried |
+| Upload request, measured by the client | p50 147.3 ms, p95 234.5 ms, p99 422.7 ms |
+| From first upload to queue empty | 466.6 s (1,446.7 photos per minute), 0 failed |
+| Largest queue seen | 24 jobs: the single worker kept up with the uploads, so its ceiling was not reached |
+| Box memory (473 MB) | lowest available 96 MB, swap used at most 26 MB, app process at most 275 MB |
+| Disk | 380 MB used by the photos, 19.2 GB still free |
+| Errors | 0 server errors, health UP in all 30 samples (every 15 s during upload and indexing) |
+
+**Bug found: search got slow in a big event.** The first 678 answered searches spent p50 129.5 ms in SQL (p95
+170.9 ms), against 1.4 ms in the 36-photo demo event. Two causes in `SearchService`: after a few calls the JDBC
+driver switches to a server-side prepared statement, and Postgres then turned the selfie's text into a vector
+again for every face row; and every face of the event went through the join and the `GROUP BY` before the
+distance limit was applied. The fix makes the vector once (`WITH q AS MATERIALIZED`) and moves the distance limit
+into `WHERE`. A photo passes if any of its faces passes, so the result is the same: all 678 searches
+that ran before the fix returned exactly the same photos after it.
+
+| Search with a selfie | Before the fix (678 searches) | After the fix (1,733 searches) |
+|---|---|---|
+| Whole request, measured by the client (includes the network) | p50 295.0 ms, p95 392.7 ms | p50 163.1 ms, p95 246.9 ms, p99 455.6 ms |
+| SQL search (server) | p50 129.5 ms, p95 170.9 ms | p50 7.3 ms, p95 12.2 ms |
+| Detect and embed (server) | p50 25.1 ms, p95 36.5 ms | p50 26.8 ms, p95 40.3 ms |
+
+After the fix, searching 11,251 photos is about as fast as searching the 36 demo photos was (`hosted.json`:
+p50 166.1 ms, p95 275.2 ms). The slowest request took 1270.0 ms. "Before" counts the 678 answered searches that ran
+before the fix was deployed; the run was then stopped and all 1,980 queries were run again on the fixed build. While photos were still being uploaded and indexed, 8 probe searches (one a minute) took
+p50 223.6 ms.
+
+**Accuracy at 11,251 photos** (threshold 0.55, scored the same way as `accuracy.json`):
+
+| Measure | Small evaluation event (438 photos) | Scale test (11,251 photos) |
+|---|---|---|
+| Precision | 0.9955 | 0.9172 (534 wrong of 6,446 photos returned) |
+| Recall | 0.8871 | 0.79 (0.8303 if the 200-result cap is taken into account) |
+| People who found at least one of their photos | | 1,425 of 1,680 |
+| Selfies refused (more than one face, or none) | 7 (test split) | 219 of 1,680 |
+| People not in the event who got any result | 0 of 25 | 48 of 272 (17.6%; 28 more selfies were refused) |
+
+The search engine holds up at this size; the threshold does not. With 16 times more faces in the event there are
+many more look-alikes: Serena Williams's search, for example, also returned 6 photos of Venus Williams. The 0.55 threshold was tuned on
+438 photos and lets 17.6% of strangers see at least one photo of someone else. A returned photo only counts as
+correct if the searched person is the labelled person in it, so a person who is only in the background counts as
+wrong, and LFW has a few people under two names (Joseph Blatter and Sepp Blatter), so precision is slightly
+pessimistic. Recall is capped for the few people with more than 200 photos (George W. Bush has 529 in the event).
+
+`eval/scale_sweep.py` repeats the scoring offline for other thresholds. It runs the same two models with the
+same settings through OpenCV's Python bindings on this split, because the hosted box does not return raw
+distances. At 0.55 it gives precision 0.917, recall 0.7838 and 48 of 271 strangers, close to the live result,
+which is the check that it behaves like the app:
+
+| Threshold | Precision | Recall | Strangers with any result (of 271) |
+|---|---|---|---|
+| 0.45 | 0.9855 | 0.6983 | 5 (1.8%) |
+| **0.50** | **0.9779** | **0.7552** | **8 (3.0%)** |
+| 0.55 (current) | 0.917 | 0.7838 | 48 (17.7%) |
+| 0.60 | 0.6056 | 0.8021 | 186 (68.6%) |
+
+At this size 0.50 is the better setting: it gives up about 3 points of recall for 6 times fewer wrong strangers.
+The app still uses 0.55, the value tuned on the small event; changing it is a separate decision.
+
+One limit showed up on the organizer side: the photo list returns the newest 1,000 photos (a fixed `LIMIT` in
+`EventController`), so in an event this big the other 10,251 cannot be browsed from the organizer page. The
+event's counts and the guest search are not affected.
+
+The event is still on the hosted box. The test registered its own organizer account and did not touch the demo
+event.
+
 ## Reproducing
 
 ```bash
@@ -138,4 +217,8 @@ python3 eval/run_eval.py latency                    # latency.json
 python3 eval/ann_bench.py                           # ann_bench.json
 python3 eval/plot_accuracy.py                       # docs/images/accuracy.png
 scripts/fetch-demo-photos.sh && python3 eval/hosted_check.py   # hosted.json
+# full LFW set against the hosted box (extract lfw.tgz into eval/data/scale/lfw first)
+python3 eval/scale_test.py prepare && python3 eval/scale_test.py upload
+python3 eval/scale_test.py search && python3 eval/scale_test.py summary   # scale.json
+python3 eval/scale_sweep.py                                               # scale_sweep.json
 ```

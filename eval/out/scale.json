@@ -1,0 +1,147 @@
+{
+ "api": "https://spotme.sites.tab.bot",
+ "measured_at": "2026-10-10T20:38:37+00:00",
+ "dataset": {
+  "source": "LFW, full set (http://vis-www.cs.umass.edu/lfw/)",
+  "images": 13233,
+  "people": 5749,
+  "seed": 11,
+  "event_photos": 11253,
+  "held_out_selfies": 1680,
+  "strangers_kept_out": 300,
+  "note": "every person with 2+ photos keeps one back as the selfie; 300 single-photo people are not in the event"
+ },
+ "event": {
+  "id": "00dff3bc-72fb-4051-a165-7d76d6931616",
+  "photos_ready": 11251,
+  "photos_failed": 0,
+  "faces": 12940,
+  "distinct_photo_ids": 11251
+ },
+ "upload": {
+  "threads": 4,
+  "requests_ok": 11253,
+  "requests_failed_final": 0,
+  "retried": 0,
+  "duplicates": 2,
+  "seconds": 456.3,
+  "photos_per_minute": 1479.6,
+  "request_ms": {
+   "p50": 147.3,
+   "p95": 234.5,
+   "p99": 422.7,
+   "max": 1262.9
+  }
+ },
+ "indexing": {
+  "seconds_from_first_upload_to_drained": 466.6,
+  "photos_per_minute_overall": 1446.7,
+  "photos_per_minute_after_uploads_ended": null,
+  "largest_queue_seen": 24,
+  "worker": "1 thread, 1 face engine, 2 OpenCV threads (deploy/start.sh)"
+ },
+ "accuracy": {
+  "threshold": 0.55,
+  "max_results": 200,
+  "member_queries": 1680,
+  "member_queries_refused": {
+   "422": 219
+  },
+  "precision": 0.9172,
+  "recall": 0.79,
+  "recall_within_result_cap": 0.8303,
+  "members_with_at_least_one_correct_photo": 1425,
+  "photos_returned": 6446,
+  "photos_correct": 5912,
+  "photos_wrong": 534,
+  "stranger_queries": 300,
+  "stranger_queries_refused": {
+   "422": 28
+  },
+  "strangers_with_any_result": 48,
+  "stranger_false_match_rate": 0.1765,
+  "stranger_photos_returned": 70,
+  "scoring": "per photo; a returned photo counts as correct only if the searched person is the labelled person in it, so a person who is only in the background counts as wrong; refused selfies (422, more than one face or none) count as misses in recall"
+ },
+ "search_latency_before_fix": {
+  "searches": 678,
+  "client_total_ms": {
+   "p50": 295.0,
+   "p95": 392.7,
+   "p99": 494.0,
+   "max": 608.4
+  },
+  "server_decode_ms": {
+   "p50": 1.0,
+   "p95": 1.7,
+   "p99": 2.2,
+   "max": 3.1
+  },
+  "server_faces_ms": {
+   "p50": 25.1,
+   "p95": 36.5,
+   "p99": 46.5,
+   "max": 67.8
+  },
+  "server_sql_ms": {
+   "p50": 129.5,
+   "p95": 170.9,
+   "p99": 194.2,
+   "max": 295.1
+  }
+ },
+ "search_latency_after_fix": {
+  "searches": 1733,
+  "client_total_ms": {
+   "p50": 163.1,
+   "p95": 246.9,
+   "p99": 455.6,
+   "max": 1270.0
+  },
+  "server_decode_ms": {
+   "p50": 1.1,
+   "p95": 1.8,
+   "p99": 2.3,
+   "max": 43.0
+  },
+  "server_faces_ms": {
+   "p50": 26.8,
+   "p95": 40.3,
+   "p99": 49.9,
+   "max": 340.4
+  },
+  "server_sql_ms": {
+   "p50": 7.3,
+   "p95": 12.2,
+   "p99": 15.1,
+   "max": 75.5
+  }
+ },
+ "same_photos_before_and_after_fix": {
+  "compared": 678,
+  "identical": 678
+ },
+ "search_latency_during_indexing": {
+  "probes": 8,
+  "client_total_ms": {
+   "p50": 223.6,
+   "p95": 439.1,
+   "p99": 501.5,
+   "max": 517.1
+  },
+  "note": "one probe search a minute while photos were being uploaded and indexed (before the fix)"
+ },
+ "box": {
+  "memory_total_mb": 473,
+  "min_memory_available_mb": 96,
+  "max_swap_used_mb": 26,
+  "max_process_rss_mb": 275,
+  "disk_used_by_run_mb": 380,
+  "disk_free_gb_after": 19.2,
+  "server_errors": 0,
+  "health_not_up": 0,
+  "monitor_errors": 0,
+  "samples": 30
+ },
+ "note": "client times are measured from a machine outside the box, so they include the network round trip"
+}
