@@ -1,0 +1,14 @@
+digraph removal {
+    graph [fontname="Helvetica", fontsize=13, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=0.5, newrank=true];
+    node  [shape=box, style="rounded,filled", fillcolor="#fffdf9", color="#2a221c", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+    edge  [color="#5a544b", fontname="Helvetica", fontsize=10, fontcolor="#5a544b", arrowsize=0.7];
+    graph [rankdir=LR];
+    guest    [label="Guest selects photos\n\"Remove photos of me\"", fillcolor="#fbe9df", color="#c8361d"];
+    hidden   [label="Suppressed at once\nhidden from everyone,\nlinks stop working"];
+    organizer[label="Organizer reviews"];
+    purge    [label="PURGE_PHOTO job\nfiles + face vectors deleted,\nhash kept to block re-upload", fillcolor="#e6f2ea", color="#2f7a4a"];
+    back     [label="Visible again\n(unless another request\nis still open)"];
+    guest -> hidden -> organizer;
+    organizer -> purge [label="approve"];
+    organizer -> back [label="reject"];
+}
