@@ -52,6 +52,16 @@ class ImageProcessorTest {
     }
 
     @Test
+    void errorMessagesNameTheConfiguredLimits() throws IOException {
+        assertThatThrownBy(() -> processor.clean(new byte[5_000_001], true))
+                .hasFieldOrPropertyWithValue("code", "file_too_large")
+                .hasMessage("That file is larger than 5 MB.");
+        assertThatThrownBy(() -> new ImageProcessor(props(16_000_000)).clean(jpeg(5000, 4000), true))
+                .hasFieldOrPropertyWithValue("code", "too_many_pixels")
+                .hasMessage("That photo is over 16 megapixels.");
+    }
+
+    @Test
     void reEncodingDropsExifAndMakesAThumbnail() throws Exception {
         byte[] withExif = insertExif(jpeg(1200, 800), "GPS 12.9716 N 77.5946 E");
         assertThat(new String(withExif, StandardCharsets.ISO_8859_1)).contains("Exif", "GPS 12.9716");

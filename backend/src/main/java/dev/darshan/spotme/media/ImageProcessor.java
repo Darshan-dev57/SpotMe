@@ -81,7 +81,7 @@ public class ImageProcessor {
             throw new RejectedImageException("empty_file", "The file is empty.");
         }
         if (bytes.length > maxBytes) {
-            throw new RejectedImageException("file_too_large", "That file is larger than 20 MB.");
+            throw new RejectedImageException("file_too_large", "That file is larger than " + maxBytes / 1_000_000 + " MB.");
         }
         String type = sniffType(bytes);
         if (type == null) {
@@ -92,7 +92,7 @@ public class ImageProcessor {
             throw new RejectedImageException("corrupt_image", "This image could not be read.");
         }
         if (size[0] * size[1] > maxPixels) {
-            throw new RejectedImageException("too_many_pixels", "That photo is over 40 megapixels.");
+            throw new RejectedImageException("too_many_pixels", "That photo is over " + pixelLimit() + ".");
         }
         try {
             decodeSlots.acquire();
@@ -109,6 +109,11 @@ public class ImageProcessor {
         } finally {
             decodeSlots.release();
         }
+    }
+
+    /** The pixel cap in words, e.g. "16 megapixels" (the hosted demo uses a lower cap than the default). */
+    String pixelLimit() {
+        return maxPixels >= 1_000_000 ? maxPixels / 1_000_000 + " megapixels" : maxPixels + " pixels";
     }
 
     /** Magic numbers: JPEG starts FF D8 FF, PNG starts 89 'P' 'N' 'G'. */
