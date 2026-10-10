@@ -7,6 +7,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { ApiError, Notice, SearchResult, api } from "@/lib/api";
 import { shrinkImage } from "@/lib/image";
 
+/** Sample "selfies" for the public demo: official NASA portraits that are not in the album itself. */
+const DEMO_SELFIES = [
+  { src: "/demo/behnken.jpg", name: "Bob Behnken", note: "in the album" },
+  { src: "/demo/hurley-2.jpg", name: "Doug Hurley", note: "in the album" },
+  { src: "/demo/glover.jpg", name: "Victor Glover", note: "not in it" },
+];
+
 /** One selfie, sent as the raw request body and matched in memory on the server. */
 export function SelfieStep({
   notice,
@@ -24,6 +31,11 @@ export function SelfieStep({
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function trySample(src: string) {
+    const blob = await (await fetch(src)).blob();
+    await search(new File([blob], "sample.jpg", { type: blob.type }));
+  }
 
   async function search(file: File | undefined) {
     if (!file) return;
@@ -98,6 +110,34 @@ export function SelfieStep({
           <p className="text-sm text-muted-foreground">The selfie is used for this one search and then discarded.</p>
         </div>
       </div>
+
+      {notice.demo && (
+        <div className="mt-10 border-t pt-6">
+          <h2 className="font-semibold">No selfie handy? Use a sample</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Official NASA portraits. None of them is one of the album&apos;s photos.
+          </p>
+          <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
+            {DEMO_SELFIES.map((s) => (
+              <li key={s.src}>
+                <button
+                  type="button"
+                  onClick={() => trySample(s.src)}
+                  disabled={busy}
+                  className="group block w-full text-left disabled:opacity-60"
+                >
+                  <span className="block aspect-[3/4] overflow-hidden rounded-lg bg-muted ring-primary ring-offset-2 ring-offset-background transition-shadow group-hover:ring-2 group-focus-visible:ring-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.src} alt="" className="h-full w-full object-cover" />
+                  </span>
+                  <span className="mt-1.5 block text-sm leading-tight font-medium">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">{s.note}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <input ref={camera} type="file" accept="image/*" capture="user" hidden onChange={(e) => search(e.target.files?.[0])} />
       <input ref={library} type="file" accept="image/jpeg,image/png" hidden onChange={(e) => search(e.target.files?.[0])} />

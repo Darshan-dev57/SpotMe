@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { SiteHeader } from "@/components/brand";
+import { DemoButton } from "@/components/demo-button";
 import { Button } from "@/components/ui/button";
 
 const SHEET = [
@@ -53,14 +54,15 @@ export default function Home() {
               The organizer uploads the photos. You take one selfie. SpotMe shows the photos you are probably in, and
               only from the event you were invited to.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Button asChild size="lg">
+            <div className="mt-8 flex flex-wrap items-start gap-x-4 gap-y-3">
+              <DemoButton />
+              <Button asChild size="lg" variant="outline">
                 <Link href="/organizer">
                   Create an event <ArrowRight />
                 </Link>
               </Button>
-              <p className="text-sm text-muted-foreground">Got an invite? Open the link the organizer sent you.</p>
             </div>
+            <p className="mt-5 text-sm text-muted-foreground">Got an invite? Open the link the organizer sent you.</p>
           </div>
 
           <ContactSheet />
