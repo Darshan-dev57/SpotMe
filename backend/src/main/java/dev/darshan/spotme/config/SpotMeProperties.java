@@ -28,7 +28,7 @@ public record SpotMeProperties(
 
     /**
      * maxDistance is a pgvector cosine distance (1 - cosine similarity).
-     * It was picked from the accuracy harness, see docs/ARCHITECTURE.md.
+     * It was picked from the accuracy harness, see docs/MEASUREMENTS.md.
      */
     public record Search(double maxDistance, int maxResults, int perMinuteLimit, Duration mediaLinkTtl) {
     }
