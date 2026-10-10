@@ -213,7 +213,8 @@ public class EventController {
         out.put("id", membershipId);
         out.put("label", req.label().trim());
         out.put("token", token);
-        out.put("joinUrl", props.webOrigin().split(",")[0] + "/join/" + token);
+        // the token goes after "#", so browsers never send it to a server in the page request
+        out.put("joinUrl", props.webOrigin().split(",")[0] + "/join#" + token);
         return out;
     }
 
