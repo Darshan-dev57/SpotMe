@@ -1,0 +1,108 @@
+{
+  "base": "https://spotme.sites.tab.bot",
+  "at": "2026-10-11T05:33:17.587Z",
+  "folder": {
+    "uploadSeconds": 7.541,
+    "panel": "Upload finished\n11/11\n3 files are not a photo (videos, documents), skipped.",
+    "counts": {
+      "queued": 0,
+      "processing": 0,
+      "ready": 11,
+      "failed": 0
+    },
+    "faces": 39,
+    "photos": [
+      {
+        "width": 4000,
+        "height": 2667,
+        "faces": 5,
+        "matched": false
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 1024,
+        "faces": 1,
+        "matched": false
+      },
+      {
+        "width": 1280,
+        "height": 1024,
+        "faces": 1,
+        "matched": false
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      },
+      {
+        "width": 1280,
+        "height": 720,
+        "faces": 4,
+        "matched": true
+      }
+    ],
+    "searchResults": 8
+  },
+  "drive": {
+    "status": "done",
+    "found": 149,
+    "imported": 149,
+    "duplicates": 0,
+    "failed": 0,
+    "skipped": 0,
+    "overLimit": 0,
+    "seconds": 411.767,
+    "wallSeconds": 416.505,
+    "counts": {
+      "queued": 0,
+      "processing": 0,
+      "ready": 149,
+      "failed": 0
+    },
+    "faces": 1200,
+    "memory": {
+      "lowestAvailableMb": 56,
+      "highestProcessRssMb": 357,
+      "highestSwapMb": 358,
+      "samples": 27
+    }
+  }
+}

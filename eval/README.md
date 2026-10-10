@@ -58,6 +58,13 @@ model's memory on its own. Needs `onnxruntime`, `opencv-python` and `numpy`; the
 the top of `erase_test.py`. The 20 test photos are listed with their licences in `erase_photos.json` and are
 not committed. Results: `eval/out/erase_test.json` and `docs/MEASUREMENTS.md`.
 
+## Ingestion check
+
+`ingest_check.mjs` checks the newer ways photos come in, against a running app (the hosted demo by default):
+a folder picked in the real organizer page with headless Chromium (formats, subfolders, non-photo files, the
+pixel-cap retry), then a public Google Drive folder imported over the API with the box's memory sampled.
+Needs Node 20 and `playwright-core` with a Chromium binary. Results: `eval/out/ingest_live.json`.
+
 ## Scoring
 
 Scoring is per **photo**, because that is what an attendee sees: a group photo is one result even if
