@@ -53,8 +53,11 @@ public class Api {
 
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> delete(String path, String token) {
-        return (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) http.delete().uri(path)
-                .header("Authorization", "Bearer " + token).retrieve().toEntity(Map.class);
+        var spec = http.delete().uri(path);
+        if (token != null) {
+            spec = spec.header("Authorization", "Bearer " + token);
+        }
+        return (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) spec.retrieve().toEntity(Map.class);
     }
 
     public ResponseEntity<byte[]> getBytes(String path) {
@@ -79,11 +82,15 @@ public class Api {
                 .retrieve().toEntity(Map.class);
     }
 
-    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> search(String attendeeToken, byte[] selfie) {
-        return (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) http.post().uri("/api/attendee/search")
+        return postImage("/api/attendee/search", attendeeToken, selfie);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> postImage(String path, String attendeeToken, byte[] image) {
+        return (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) http.post().uri(path)
                 .header("Authorization", "Bearer " + attendeeToken)
-                .contentType(MediaType.IMAGE_JPEG).body(selfie)
+                .contentType(MediaType.IMAGE_JPEG).body(image)
                 .retrieve().toEntity(Map.class);
     }
 
