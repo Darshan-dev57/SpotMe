@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * <ul>
  *   <li>enqueue runs inside the caller's transaction, so "photo row + its job" commit together;</li>
  *   <li>claim uses FOR UPDATE SKIP LOCKED so many workers never grab the same row, and gives
- *       each claim a lease (deadline) and a fresh random token;</li>
+ *       each claim a lease (deadline) and a fresh random token; lower priority numbers go first;</li>
  *   <li>complete/fail only work while the token still matches, so a worker whose lease ran
  *       out cannot overwrite the result of the worker that took over.</li>
  * </ul>
@@ -32,10 +32,10 @@ public class JobQueue {
     /** Adds a job unless one with the same dedupe key already exists. Returns true if it was added. */
     public boolean enqueue(JobKind kind, UUID targetId, String dedupeKey, int maxAttempts) {
         int rows = jdbc.update("""
-                INSERT INTO jobs (kind, target_id, dedupe_key, state, max_attempts)
-                VALUES (?, ?, ?, 'queued', ?)
+                INSERT INTO jobs (kind, target_id, dedupe_key, state, max_attempts, priority)
+                VALUES (?, ?, ?, 'queued', ?, ?)
                 ON CONFLICT (dedupe_key) DO NOTHING
-                """, kind.name(), targetId, dedupeKey, maxAttempts);
+                """, kind.name(), targetId, dedupeKey, maxAttempts, kind.priority());
         return rows == 1;
     }
 
@@ -63,7 +63,7 @@ public class JobQueue {
                 WHERE id IN (
                     SELECT id FROM jobs
                     WHERE state = 'queued' AND run_after <= now()
-                    ORDER BY run_after, id
+                    ORDER BY priority, run_after, id
                     LIMIT ?
                     FOR UPDATE SKIP LOCKED)
                 RETURNING id, kind, target_id, attempts, max_attempts, claim_token
