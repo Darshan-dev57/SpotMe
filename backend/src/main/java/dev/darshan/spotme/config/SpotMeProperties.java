@@ -18,7 +18,7 @@ public record SpotMeProperties(
         Worker worker,
         Eval eval) {
 
-    public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide) {
+    public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide, int maxPhotosPerEvent) {
     }
 
     /** Detector settings. maxSide: photos are scaled so the long side is at most this many pixels. */
@@ -27,7 +27,7 @@ public record SpotMeProperties(
 
     /**
      * maxDistance is a pgvector cosine distance (1 - cosine similarity).
-     * It was picked from the accuracy harness, see docs/MEASUREMENTS.md.
+     * It was picked from the accuracy harness, see docs/ARCHITECTURE.md.
      */
     public record Search(double maxDistance, int maxResults, int perMinuteLimit, Duration mediaLinkTtl) {
     }
