@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { DiscoverButton } from "@/components/obsidian/discover-button";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError, api } from "@/lib/api";
 
@@ -39,12 +38,16 @@ export function DemoButton() {
   }
 
   return (
-    <div className="flex flex-col items-start gap-1.5">
-      <Button size="lg" onClick={open} disabled={busy}>
-        {busy ? <Spinner /> : <Sparkles />} Try the demo
-      </Button>
+    <div className="flex flex-col items-start gap-2">
+      <DiscoverButton
+        label="Try the demo"
+        onClick={open}
+        disabled={busy}
+        icon={busy ? <Spinner className="size-5" /> : undefined}
+        className="spotme-discover"
+      />
       <span className="tabular text-xs text-muted-foreground">
-        {demo.photoCount} public domain photos · no sign up
+        {demo.photoCount} public domain photos · no sign-up
       </span>
     </div>
   );
