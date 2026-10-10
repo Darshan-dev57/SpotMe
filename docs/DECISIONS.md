@@ -28,6 +28,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 20. [A public demo with public domain photos](#20-a-public-demo-with-public-domain-photos)
 21. [Removal takes only the guest's solo photos](#21-removal-takes-only-the-guests-solo-photos)
 22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
+23. [HEIC and AVIF are converted in the browser](#23-heic-and-avif-are-converted-in-the-browser)
 
 ---
 
@@ -216,7 +217,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 
 ## 14. Untrusted uploads are checked, capped and re-encoded
 
-- **Choice:** the real type is read from the first bytes (JPEG or PNG only), the pixel count is read from the
+- **Choice:** the real type is read from the first bytes (JPEG, PNG, WebP, TIFF, BMP or GIF), the pixel count is read from the
   header and capped before decoding, and every photo is decoded and re-encoded as JPEG, which drops EXIF
   data such as GPS position. Files are stored under keys made from generated ids, never the uploaded name.
   A semaphore limits how many photos decode at once.
@@ -224,7 +225,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   taken, and file names can contain paths.
 - **Alternative:** trust the `Content-Type` header and store the original file.
 - **Tradeoff:** re-encoding costs some CPU and a little image quality.
-- **What would change it:** support for HEIC or RAW photos, which would need a converter step.
+- **What would change it:** support for RAW photos, which would need a converter step.
 
 ## 15. Photo files on local disk behind an interface
 
@@ -321,3 +322,16 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   biometric data, so it is kept only on opt-in, only for one event, and never the image itself.
 - **What would change it:** guests asking to be told without opening the link; a free web push notification
   would be the next step before email.
+
+## 23. HEIC and AVIF are converted in the browser
+
+- **Choice:** the server decodes JPEG, PNG, WebP, TIFF and BMP with OpenCV and the first frame of a GIF with
+  Java's ImageIO. HEIC/HEIF (iPhone photos) and AVIF are converted to JPEG by the organizer page before upload:
+  first with the browser's own decoder (Safari reads HEIC, current browsers read AVIF), otherwise with the
+  `heic-to` library (libheif compiled to WebAssembly), which is downloaded only when a HEIC file is picked.
+- **Why:** there is no small, maintained pure-Java HEIC or AVIF decoder. The native options (libheif, ImageMagick)
+  would add system packages and memory to a 473 MB box. The browser already has the photo and the CPU.
+- **Alternative:** a native converter on the server, or refusing HEIC.
+- **Tradeoff:** a HEIC uploaded straight to the API (not through the page) is refused with a message, and the
+  HEIC decoder adds a 3 MB download the first time it is needed.
+- **What would change it:** a maintained Java HEIC/AVIF decoder, or a bigger server.
