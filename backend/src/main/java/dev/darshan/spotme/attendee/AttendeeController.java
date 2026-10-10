@@ -9,17 +9,18 @@ import dev.darshan.spotme.common.Tokens;
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.media.MediaSigner;
 import dev.darshan.spotme.media.PhotoStorage;
+import dev.darshan.spotme.removal.RemovalService;
 import dev.darshan.spotme.search.SearchService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -42,7 +43,17 @@ public class AttendeeController {
     public record ConsentRequest(@NotNull Integer noticeVersion, boolean agree) {
     }
 
-    public record PhotoIdsRequest(@NotEmpty @Size(max = 200) List<UUID> photoIds, @Size(max = 500) String note) {
+    public record PhotoIdsRequest(@NotEmpty @Size(max = 200) List<UUID> photoIds) {
+    }
+
+    /** One photo the guest was found in, with the face that matched them (from the search result). */
+    public record FoundPhoto(@NotNull UUID photoId, Long faceId) {
+    }
+
+    /** mode "solo": only photos where the guest is alone; "erase": also erase them from group photos. */
+    public record RemovalRequest(@NotNull @Pattern(regexp = "solo|erase") String mode,
+                                 @NotEmpty @Size(max = 200) List<@Valid FoundPhoto> photos,
+                                 @Size(max = 500) String note) {
     }
 
     public record PhotoRequest(@NotNull UUID photoId) {
@@ -54,11 +65,13 @@ public class AttendeeController {
     private final MediaSigner signer;
     private final PhotoStorage storage;
     private final SpotMeProperties props;
+    private final RemovalService removals;
     private final RateLimiter<UUID> limiter;
 
     public AttendeeController(JdbcTemplate jdbc, SessionService sessions, SearchService search, MediaSigner signer,
-                              PhotoStorage storage, SpotMeProperties props) {
+                              PhotoStorage storage, SpotMeProperties props, RemovalService removals) {
         this.jdbc = jdbc;
+        this.removals = removals;
         this.sessions = sessions;
         this.search = search;
         this.signer = signer;
@@ -132,6 +145,8 @@ public class AttendeeController {
             p.put("id", match.photoId());
             p.put("thumbUrl", signer.link(match.photoId(), "thumb", subject));
             p.put("downloadUrl", signer.link(match.photoId(), "original", subject));
+            p.put("faceId", match.faceId());
+            p.put("solo", match.solo());
             photos.add(p);
         }
         Long pending = jdbc.queryForObject(
@@ -140,6 +155,7 @@ public class AttendeeController {
         body.put("count", photos.size());
         body.put("photos", photos);
         body.put("stillIndexing", pending != null && pending > 0);
+        body.put("eraseAvailable", removals.eraseEnabled());
         SearchService.Timings t = result.timings();
         response.setHeader("Server-Timing", String.format(java.util.Locale.ROOT,
                 "decode;dur=%.1f, faces;dur=%.1f, sql;dur=%.1f", t.decode(), t.faces(), t.sql()));
@@ -159,32 +175,37 @@ public class AttendeeController {
     }
 
     /**
-     * "Remove photos of me": the photos are hidden from everyone right away (reversible),
-     * then the organizer approves (permanent purge) or rejects. A lookalike selfie alone
-     * never deletes anything.
+     * "Remove me": the guest picks what happens to the photos they were found in (see RemovalService).
+     * The affected photos are hidden from everyone right away (reversible); the organizer then
+     * approves or rejects. A lookalike selfie alone never deletes or edits anything.
      */
     @PostMapping("/api/attendee/removals")
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
-    public Map<String, Object> requestRemoval(@Valid @RequestBody PhotoIdsRequest req, HttpServletRequest http) {
+    public Map<String, Object> requestRemoval(@Valid @RequestBody RemovalRequest req, HttpServletRequest http) {
         Principal.Attendee me = AuthInterceptor.attendee(http);
-        requirePhotosInEvent(req.photoIds(), me.eventId());
-        UUID id = UUID.randomUUID();
-        UUID[] ids = req.photoIds().stream().distinct().toArray(UUID[]::new);
-        jdbc.update("""
-                INSERT INTO removal_requests (id, event_id, membership_id, photo_ids, note, status)
-                VALUES (?, ?, ?, ?, ?, 'received')
-                """, id, me.eventId(), me.membershipId(), ids, req.note());
-        jdbc.update("UPDATE photos SET suppressed_at = coalesce(suppressed_at, now()) WHERE id = ANY (?)", (Object) ids);
-        return Map.of("id", id, "status", "received", "photos", ids.length);
+        Map<UUID, Long> faceByPhoto = new LinkedHashMap<>();
+        for (FoundPhoto photo : req.photos()) {
+            faceByPhoto.put(photo.photoId(), photo.faceId());
+        }
+        RemovalService.Created created = removals.request(me.eventId(), me.membershipId(), req.mode(), faceByPhoto, req.note());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", created.id());
+        out.put("status", "received");
+        out.put("mode", req.mode());
+        out.put("hidden", created.hidden());
+        out.put("erasing", created.erasing());
+        out.put("keptGroupPhotos", created.keptGroupPhotos());
+        return out;
     }
 
     @GetMapping("/api/attendee/removals")
     public List<Map<String, Object>> myRemovals(HttpServletRequest http) {
         Principal.Attendee me = AuthInterceptor.attendee(http);
         return jdbc.queryForList("""
-                SELECT id, status, cardinality(photo_ids) AS photos, created_at AS "createdAt", completed_at AS "completedAt"
-                FROM removal_requests WHERE membership_id = ? ORDER BY created_at DESC
+                SELECT r.id, r.status, r.mode, cardinality(r.photo_ids) AS photos,
+                       (SELECT count(*) FROM photo_edits e WHERE e.request_id = r.id) AS "groupPhotos",
+                       r.created_at AS "createdAt", r.completed_at AS "completedAt"
+                FROM removal_requests r WHERE r.membership_id = ? ORDER BY r.created_at DESC
                 """, me.membershipId());
     }
 
