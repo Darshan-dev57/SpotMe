@@ -1,0 +1,40 @@
+digraph spotme {
+    graph [fontname="Helvetica", fontsize=13, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=0.5, newrank=true];
+    node  [shape=box, style="rounded,filled", fillcolor="#fffdf9", color="#2a221c", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+    edge  [color="#5a544b", fontname="Helvetica", fontsize=10, fontcolor="#5a544b", arrowsize=0.7];
+    graph [rankdir=TB, ranksep=0.45];
+    organizer [label="Organizer's browser\nupload, review, invite", fillcolor="#fbe9df", color="#c8361d"];
+    guest     [label="Guest's phone\ninvite link + one selfie", fillcolor="#fbe9df", color="#c8361d"];
+    {rank=same; organizer; guest;}
+
+    subgraph cluster_app {
+        label="Spring Boot 4  ·  Java 21  —  one process: web UI + API + job worker"; style="rounded,filled"; fillcolor="#f4f1ea"; color="#cfc7b7"; fontcolor="#2a221c";
+        web      [label="Static web UI\n(Next.js export)"];
+        api      [label="Controllers + AuthInterceptor\nevents, uploads, join, search,\nremovals, signed media links"];
+        intake   [label="PhotoIntake\nvalidate, strip EXIF,\nthumbnail, dedupe"];
+        search   [label="SearchService\nselfie in memory only,\nexactly one face"];
+        worker   [label="JobWorker\nclaim, lease, heartbeat,\nretry with backoff"];
+        house    [label="Housekeeping\nexpiry purge, lease reaper,\norphan file cleanup"];
+        engine   [label="FaceEngine pool\nOpenCV YuNet detect\n+ SFace 128-d embedding"];
+        {rank=same; web; api;}
+        {rank=same; intake; search; house;}
+        api -> intake; api -> search;
+        worker -> engine; search -> engine;
+        {rank=same; worker; engine;}
+    }
+
+    pg    [label="PostgreSQL 16 + pgvector\nevents, memberships, photos,\nfaces vector(128), jobs", shape=cylinder];
+    files [label="Photo files\nlocal disk behind the\nPhotoStorage interface", shape=cylinder];
+    {rank=same; pg; files;}
+
+    organizer -> web [style=dashed, label="pages"];
+    guest -> web [style=dashed];
+    organizer -> api [label="JSON + Bearer"];
+    guest -> api [label="selfie as JPEG body"];
+    intake -> files [label="write"];
+    intake -> pg [label="photo row + job,\none transaction"];
+    worker -> pg [label="FOR UPDATE SKIP LOCKED,\nfaces back in one transaction"];
+    worker -> files [label="read", style=dashed];
+    search -> pg [label="cosine distance,\nWHERE event_id = ?"];
+    house -> pg [style=dashed];
+}

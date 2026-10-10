@@ -1,0 +1,15 @@
+digraph jobs {
+    graph [fontname="Helvetica", fontsize=13, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=0.5, newrank=true];
+    node  [shape=box, style="rounded,filled", fillcolor="#fffdf9", color="#2a221c", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+    edge  [color="#5a544b", fontname="Helvetica", fontsize=10, fontcolor="#5a544b", arrowsize=0.7];
+    graph [rankdir=LR];
+    queued    [label="queued\nrun_after <= now()"];
+    running   [label="running\nclaim_token + lease_until"];
+    succeeded [label="succeeded", fillcolor="#e6f2ea", color="#2f7a4a"];
+    failed    [label="failed\nlast_error kept", fillcolor="#fbe9df", color="#c8361d"];
+    queued -> running [label="claim\nFOR UPDATE SKIP LOCKED"];
+    running -> succeeded [label="complete\n(token must match)"];
+    running -> queued [label="temporary error\nbackoff 2^n s + jitter"];
+    running -> failed [label="permanent error\nor attempts used up"];
+    running -> queued [label="lease ran out\n(worker died): reaper", style=dashed];
+}

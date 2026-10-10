@@ -1,0 +1,16 @@
+digraph search {
+    graph [fontname="Helvetica", fontsize=13, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=0.5, newrank=true];
+    node  [shape=box, style="rounded,filled", fillcolor="#fffdf9", color="#2a221c", fontname="Helvetica", fontsize=12, margin="0.18,0.10"];
+    edge  [color="#5a544b", fontname="Helvetica", fontsize=10, fontcolor="#5a544b", arrowsize=0.7];
+    graph [rankdir=LR, nodesep=0.3];
+    selfie  [label="Selfie\nJPEG/PNG body", fillcolor="#fbe9df", color="#c8361d"];
+    check   [label="Check access\nconsented, published,\nnot expired, 10/min"];
+    decode  [label="Decode in memory\nmagic bytes, pixel cap"];
+    detect  [label="YuNet\nexactly one clear face"];
+    embed   [label="SFace\n128 numbers, unit length"];
+    sql     [label="pgvector\nembedding <=> query\nWHERE event_id = ?\nAND distance <= 0.55"];
+    links   [label="Photos + signed links\nhidden, removed and\nreported ones left out", fillcolor="#e6f2ea", color="#2f7a4a"];
+    drop    [label="selfie bytes dropped\n(never stored)", shape=note, fillcolor="#f4f1ea", color="#cfc7b7"];
+    selfie -> check -> decode -> detect -> embed -> sql -> links;
+    embed -> drop [style=dashed, arrowhead=none];
+}
