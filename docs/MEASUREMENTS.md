@@ -31,9 +31,12 @@ Queries the API refuses (no face, or more than one face) count as misses.
 | Threshold (cosine distance) | Test precision | Test recall | Wrong photos | People not in the event who got any result |
 |---|---|---|---|---|
 | 0.50 | 1.0 | 0.8548 | 0 | 0 of 25 |
-| **0.55 (chosen)** | **0.9955** | **0.8871** | **1** | **0 of 25** |
+| **0.55 (picked here)** | **0.9955** | **0.8871** | **1** | **0 of 25** |
 | 0.60 | 0.9574 | 0.9073 | 10 | 2 of 25 |
 | 0.65 | 0.7643 | 0.9153 | 70 | 10 of 25 |
+
+The app now uses **0.51**, picked on the 11,251-photo scale test (see "Finding one person in the big event").
+On this test split precision is 1.0 at both 0.50 and 0.525, with recall 0.8548 and 0.879, so 0.51 lies between.
 
 On the tune split the same threshold gave precision 1.0 and recall 0.684. The tune split has more refused
 queries (15 against 7 on the test split, mostly selfies with a second face), which is most of the gap.
@@ -190,11 +193,11 @@ which is the check that it behaves like the app:
 |---|---|---|---|
 | 0.45 | 0.9855 | 0.6983 | 5 (1.8%) |
 | **0.50** | **0.9779** | **0.7552** | **8 (3.0%)** |
-| 0.55 (current) | 0.917 | 0.7838 | 48 (17.7%) |
+| 0.55 (used until the change to 0.51) | 0.917 | 0.7838 | 48 (17.7%) |
 | 0.60 | 0.6056 | 0.8021 | 186 (68.6%) |
 
 At this size 0.50 is the better setting: it gives up about 3 points of recall for 6 times fewer wrong strangers.
-The app still uses 0.55, the value tuned on the small event; changing it is a separate decision.
+The app now uses 0.51; the live numbers after the change are at the end of the next section.
 
 One limit showed up on the organizer side: the photo list returned only the newest 1,000 photos (a fixed
 `LIMIT` in `EventController`), so in an event this big the other 10,251 could not be browsed from the organizer
@@ -212,7 +215,7 @@ it: 143 people, 4,011 photos**. Each searched once on the hosted app with the sa
 20 of those selfies were refused because they show two faces; those people searched with their first event
 photo that has one face, and that photo is left out of their count.
 
-| At threshold 0.55, live | All 143 people | People with 10 to 15 photos (61) |
+| At threshold 0.55, live (first run) | All 143 people | People with 10 to 15 photos (61) |
 |---|---|---|
 | Photos found | 3,548 of 4,011 | 697 of 720 |
 | Median share of own photos found | 100% | 100% |
@@ -243,6 +246,26 @@ What the misses look like (checked by eye):
 copy gave 3,550 found and 124 wrong against the live 3,548 and 125): 3,428 found, 76 people with every photo,
 111 with 90% or more, 5 under 50%, and 47 wrong photos. So 0.50 removes about
 two thirds of the wrong photos, but 120 fewer own photos come back (the mean share per person drops from 96% to 92%).
+
+**After the change to 0.51** (`scale_person_051.json`, same 143 people and selfies, plus the 300 strangers, all
+live). 0.50 would have found only 92.9% of the photos of people with 10 to 15 photos (offline), below the 93%
+we wanted to keep; 0.51 was the lowest threshold in steps of 0.01 that kept it (offline 94.4%):
+
+| Live | 0.55 | 0.51 |
+|---|---|---|
+| Photos found, all 143 people | 3,548 of 4,011 | 3,461 of 4,011 |
+| Photos found, people with 10 to 15 photos | 697 of 720 (96.8%) | 680 of 720 (94.4%) |
+| People who got every photo | 103 | 84 |
+| People who got 90% or more | 129 | 119 |
+| Wrong photos returned to the 143 | 125 | 51 |
+| Strangers who got any photo | 48 of 272 (17.6%, `scale.json`) | 10 of 272 (3.7%) |
+| Photos shown to strangers | 70 | 11 |
+
+Search took 225 ms at p50 and 359 ms at p95 (419 searches). The offline copy at 0.51 gave
+3,463 found and 52 wrong, against the live 3,461 and 51. Over all 1,680 scale-test selfies the offline
+copy gives precision 0.9743 and recall 0.7643 at 0.51 (0.917 and 0.7838 at 0.55); that full run was not
+repeated live. The threshold was picked on the same people it is measured on, so these numbers are a little
+optimistic.
 
 ## Removing a person from a group photo (`erase_test.json`)
 
@@ -298,7 +321,8 @@ scripts/fetch-demo-photos.sh && python3 eval/hosted_check.py   # hosted.json
 python3 eval/scale_test.py prepare && python3 eval/scale_test.py upload
 python3 eval/scale_test.py search && python3 eval/scale_test.py summary   # scale.json
 python3 eval/scale_sweep.py                                               # scale_sweep.json
-python3 eval/scale_person.py                                              # scale_person.json
+python3 eval/scale_person.py                                              # scale_person.json (app at 0.55)
+python3 eval/scale_person.py 0.51                                         # scale_person_051.json (app at 0.51)
 # person removal test (needs onnxruntime and the models listed in erase_test.json)
 python3 eval/erase_test.py --models M --photos P --out O --plan plan.json  # per-photo times, summed into erase_test.json
 ```
