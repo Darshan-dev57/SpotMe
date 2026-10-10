@@ -54,8 +54,7 @@ public class Housekeeping {
             log.info("Recovered {} jobs with expired leases", recovered);
         }
         if (worker.isRunning()) {
-            jdbc.update("UPDATE worker_heartbeats SET last_seen = now() WHERE worker_id = ?",
-                    java.lang.management.ManagementFactory.getRuntimeMXBean().getName());
+            jdbc.update("UPDATE worker_heartbeats SET last_seen = now() WHERE worker_id = ?", worker.workerId());
         }
     }
 

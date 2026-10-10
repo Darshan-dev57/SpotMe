@@ -1,4 +1,4 @@
-package dev.darshan.spotme.attendee;
+package dev.darshan.spotme.common;
 
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +10,7 @@ class RateLimiterTest {
 
     @Test
     void allowsTheLimitThenRefusesPerAttendee() {
-        RateLimiter limiter = new RateLimiter(3);
+        RateLimiter<UUID> limiter = new RateLimiter<>(3);
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
         assertThat(limiter.tryAcquire(a)).isTrue();

@@ -147,6 +147,10 @@ public class JobWorker {
         return done.get();
     }
 
+    public String workerId() {
+        return workerId;
+    }
+
     private static void sleepQuietly(long ms) {
         try {
             Thread.sleep(ms);

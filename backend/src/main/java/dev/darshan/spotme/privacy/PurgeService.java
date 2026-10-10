@@ -118,7 +118,6 @@ public class PurgeService {
             jdbc.update("DELETE FROM photos WHERE event_id = ?", eventId);
             jdbc.update("DELETE FROM removal_requests WHERE event_id = ?", eventId);
             jdbc.update("DELETE FROM memberships WHERE event_id = ?", eventId); // cascades sessions and reports
-            jdbc.update("DELETE FROM jobs WHERE kind = 'INDEX_PHOTO' AND state <> 'running' AND target_id NOT IN (SELECT id FROM photos)");
             jdbc.update("UPDATE events SET status = 'purged', purpose_notice = '', purged_at = now() WHERE id = ?", eventId);
             if (!queue.complete(job)) {
                 throw new StaleClaimException(job.id());

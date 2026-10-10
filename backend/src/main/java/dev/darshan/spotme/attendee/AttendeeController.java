@@ -4,6 +4,7 @@ import dev.darshan.spotme.auth.AuthInterceptor;
 import dev.darshan.spotme.auth.Principal;
 import dev.darshan.spotme.auth.SessionService;
 import dev.darshan.spotme.common.ApiException;
+import dev.darshan.spotme.common.RateLimiter;
 import dev.darshan.spotme.common.Tokens;
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.media.MediaSigner;
@@ -53,7 +54,7 @@ public class AttendeeController {
     private final MediaSigner signer;
     private final PhotoStorage storage;
     private final SpotMeProperties props;
-    private final RateLimiter limiter;
+    private final RateLimiter<UUID> limiter;
 
     public AttendeeController(JdbcTemplate jdbc, SessionService sessions, SearchService search, MediaSigner signer,
                               PhotoStorage storage, SpotMeProperties props) {
@@ -63,7 +64,7 @@ public class AttendeeController {
         this.signer = signer;
         this.storage = storage;
         this.props = props;
-        this.limiter = new RateLimiter(props.search().perMinuteLimit());
+        this.limiter = new RateLimiter<>(props.search().perMinuteLimit());
     }
 
     // ---------- invite and consent (no session yet: the invite token is the credential) ----------
