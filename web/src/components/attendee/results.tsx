@@ -80,7 +80,7 @@ export function Results({
       next.delete(id);
       return next;
     });
-    toast.success("Thanks. That photo is hidden from your results.");
+    toast.success("Hidden from your results.");
   }
 
   async function requestRemoval(form: FormData) {
@@ -130,7 +130,7 @@ export function Results({
 
       {result.stillIndexing && (
         <p className="mt-4 rounded-lg bg-muted px-4 py-3 text-sm">
-          Some photos are still being processed. Search again in a few minutes to see them too.
+          Some photos are still processing. Search again in a few minutes.
         </p>
       )}
 
@@ -148,10 +148,7 @@ export function Results({
           <Empty className="mt-8 border">
             <EmptyHeader>
               <EmptyTitle>Nothing close enough</EmptyTitle>
-              <EmptyDescription>
-                SpotMe only shows photos it is confident about. Try a clearer, front-facing selfie, or ask the
-                organizer.
-              </EmptyDescription>
+              <EmptyDescription>Try a clearer, front-facing selfie.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )
@@ -235,7 +232,11 @@ export function Results({
                   current={choice}
                   onChange={setChoice}
                   title="Only my solo photos"
-                  detail={`${plural(counts.solo, "photo")} where you're alone. Group photos stay.`}
+                  detail={
+                    counts.solo > 0
+                      ? `${plural(counts.solo, "photo")} where you're alone. Group photos stay.`
+                      : "You're not alone in any of these. Group photos stay."
+                  }
                 />
                 <Choice
                   value="erase"
@@ -271,9 +272,7 @@ export function Results({
 
       <div className="mt-16 border-t pt-6">
         <h2 className="font-medium">Leave this event</h2>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          Withdraws your consent. Your link stops working and you can&apos;t search again.
-        </p>
+        <p className="mt-1 max-w-prose text-sm text-muted-foreground">Your link stops working.</p>
         {leaving ? (
           <div className="mt-3 flex gap-2">
             <Button variant="destructive" size="sm" onClick={leave}>
