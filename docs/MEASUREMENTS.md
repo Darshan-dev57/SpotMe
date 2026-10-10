@@ -8,7 +8,7 @@ what each file measured, on what machine, and how to reproduce it. The scripts a
 | Name | What it is | Used for |
 |---|---|---|
 | Development machine | Debian 12, 4 vCPUs, 8 GB RAM, shared with other work (load average 2 to 4.6 during runs) | upload, indexing, crash recovery, accuracy, latency, vector search, memory |
-| Hosted demo box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json`, `scale.json` |
+| Hosted demo box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json`, `scale.json`, `ingest_live.json` |
 
 Because the development machine was shared, treat its throughput numbers as conservative.
 
@@ -303,6 +303,41 @@ for one 512 x 512 image, so turning off the memory arena or graph optimisation d
 The hosted box has 473 MB in total and about 100 MB free while the app runs, so none of this fits there. It
 needs a machine with at least 1 GB free for the job, which is why the erase option stays switched off.
 
+## Image formats, folder upload and Drive import (`ingest_live.json`)
+
+Run on Oct 11 2026 against the hosted box at https://spotme.sites.tab.bot by `eval/ingest_check.mjs`: the folder
+goes through the real organizer page (headless Chromium, phone-size window), the Drive folder through the API.
+
+**Formats and folder upload.** One public domain NASA group photo (`crew-group.jpg`, 1280x720, four people)
+was saved in eight formats with standard encoders (ImageMagick for PNG, TIFF, BMP and a two-frame animated
+GIF; libwebp; libheif with x265 for HEIC; Pillow's libavif for AVIF). They went into one folder with a
+subfolder holding two NASA portraits and a 24 megapixel public domain JPEG, plus three files that are not
+photos (`notes.txt`, `clip.mp4`, `.DS_Store`). The folder was picked with *Choose a folder*.
+
+| Check | Result |
+|---|---|
+| Files uploaded | 11 of 11, 3 skipped as not photos |
+| HEIC and AVIF | converted to JPEG in the browser (Chromium has no HEIC decoder, so the HEIC library was loaded) |
+| 24 MP photo (hosted cap 16 MP) | refused with 413, re-sent by the page as a 4000x2667 copy, accepted |
+| Indexed | 11 of 11 ready, 39 faces; each of the eight format copies has 4 faces |
+| Selfie search (Behnken portrait) | 8 results: exactly the eight format copies of the group photo |
+
+The same folder gave the same result on three runs. Drag and drop of a folder is covered by unit tests of the folder
+walker, not by a browser run.
+
+**Drive import.** A public folder of 149 press conference photos (13 at the top, 136 in a subfolder; all 6000x4000
+JPEGs, placed in the public domain by their owner) was imported by pasting its link.
+
+| Check | Result |
+|---|---|
+| Listed | 149 photos, 0 other files |
+| Imported | 149 of 149, 0 failed, 0 duplicates |
+| Time | 411.8 s from the start to the last photo (2.8 s per photo, indexing included); an earlier run took 479 s |
+| Path taken | every original was over the 16 MP cap, so each used Google's 4000 px rendering |
+| Indexed | 149 of 149 ready, 1,200 faces |
+| Box memory during the import (27 samples) | lowest 56 MB available, app process at most 357 MB, swap at most 358 MB, no restart |
+| Selfie search | a face cropped from one photo returned 23 photos of that speaker (close-ups checked by eye) |
+
 ## Reproducing
 
 ```bash
@@ -324,5 +359,6 @@ python3 eval/scale_sweep.py                                               # scal
 python3 eval/scale_person.py                                              # scale_person.json (app at 0.55)
 python3 eval/scale_person.py 0.51                                         # scale_person_051.json (app at 0.51)
 # person removal test (needs onnxruntime and the models listed in erase_test.json)
+FOLDER=... SELFIE=... DRIVE_LINK=... node eval/ingest_check.mjs           # ingest_live.json
 python3 eval/erase_test.py --models M --photos P --out O --plan plan.json  # per-photo times, summed into erase_test.json
 ```
