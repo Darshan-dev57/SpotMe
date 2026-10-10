@@ -27,6 +27,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 19. [Integration tests against real Postgres](#19-integration-tests-against-real-postgres)
 20. [A public demo with public domain photos](#20-a-public-demo-with-public-domain-photos)
 21. [Two removal choices, with erasing behind a switch](#21-two-removal-choices-with-erasing-behind-a-switch)
+22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
 
 ---
 
@@ -148,9 +149,9 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   needs no deletion process.
 - **Alternative:** register the selfie once, as several event photo apps do, and deliver new matches
   automatically as photos arrive.
-- **Tradeoff:** no automatic "new photos of you" notification. A guest who comes back must search again.
-- **What would change it:** strong demand for live delivery during an event, and then only as an explicit
-  opt-in with its own expiry.
+- **Tradeoff:** without more, no "new photos of you" notice; a guest who comes back must search again.
+- **What would change it:** guests wanting to hear about later photos. That is now decision 22: an explicit
+  opt-in that keeps the vector (never the image) until the event ends.
 
 ## 9. A personal invite link per guest
 
@@ -307,3 +308,19 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   approves every request, the same safeguard as for deletion.
 - **What would change it:** the organizer approving the erase samples and a machine with about 1 GB free for
   the job; then a real `PersonEraser` (ONNX Runtime for Java with the tested models) replaces the stub.
+
+## 22. New-photo alerts as an opt-in private link
+
+- **Choice:** after a search a guest can tap *Notify me*. The page sends the same selfie once more, the server
+  keeps only its face vector in `photo_alerts` and returns a private link. Opening the link runs the normal
+  event-scoped search limited to photos indexed since the guest last looked, and shows "N new photos". The
+  vector is deleted when the guest turns alerts off, withdraws, is revoked, the organizer changes the notice,
+  or the event is deleted at expiry.
+- **Why:** organizers often upload in batches after the event, and a guest should not have to remember to
+  search again. Checking when the link is opened costs one search and needs no background job, email or SMS
+  provider.
+- **Alternative:** email or push notifications, or keeping the selfie for every guest.
+- **Tradeoff:** the guest has to open the link to see new photos; nothing is pushed to them. The vector is
+  biometric data, so it is kept only on opt-in, only for one event, and never the image itself.
+- **What would change it:** guests asking to be told without opening the link; a free web push notification
+  would be the next step before email.
