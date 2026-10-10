@@ -1,6 +1,7 @@
 package dev.darshan.spotme.auth;
 
 import dev.darshan.spotme.common.ApiException;
+import dev.darshan.spotme.common.RateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -34,6 +35,8 @@ public class AuthController {
     private final JdbcTemplate jdbc;
     private final SessionService sessions;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    // slows down password guessing: 10 login attempts per email per minute
+    private final RateLimiter<String> loginLimiter = new RateLimiter<>(10);
 
     public AuthController(JdbcTemplate jdbc, SessionService sessions) {
         this.jdbc = jdbc;
@@ -56,8 +59,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public SessionResponse login(@Valid @RequestBody LoginRequest req) {
+        String email = req.email().trim().toLowerCase();
+        if (!loginLimiter.tryAcquire(email)) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "slow_down", "Too many attempts. Wait a minute and try again.");
+        }
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, display_name, password_hash FROM organizers WHERE email = ?", req.email().trim().toLowerCase());
+                "SELECT id, display_name, password_hash FROM organizers WHERE email = ?", email);
         // same message for "no such user" and "wrong password"
         if (rows.isEmpty() || !encoder.matches(req.password(), (String) rows.get(0).get("password_hash"))) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "bad_credentials", "Email or password is wrong.");
