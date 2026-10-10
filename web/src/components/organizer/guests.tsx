@@ -57,7 +57,7 @@ export function Guests({ eventId, token }: { eventId: string; token: string }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
       <form action={create} className="grid content-start gap-4">
-        <Field id="names" label="Invite guests" hint="One name per line. Each person gets their own private link.">
+        <Field id="names" label="Invite guests" hint="One name per line.">
           <Textarea id="names" name="names" rows={5} placeholder={"Asha\nRohan\nMeera"} />
         </Field>
         <Button type="submit" disabled={busy} className="justify-self-start">
@@ -70,7 +70,7 @@ export function Guests({ eventId, token }: { eventId: string; token: string }) {
           <div className="mb-8">
             <h3 className="font-medium">New links</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Copy them now. For privacy, a link is only shown once; make a new one if it gets lost.
+              Each link is shown only once. Copy them now.
             </p>
             <ul className="mt-3 divide-y rounded-lg border bg-card">
               {fresh.map((inv) => (
