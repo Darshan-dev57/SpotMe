@@ -197,8 +197,10 @@ scripts/        model and demo photo downloads
 | Photos indexed and searchable | One private link per guest | Reviewing a removal request |
 | <img src="docs/images/screens/guest-notice.jpg" width="220" alt="Guest notice"> | <img src="docs/images/screens/guest-results.jpg" width="220" alt="Guest results"> | <img src="docs/images/screens/guest-viewer.jpg" width="220" alt="Photo viewer"> |
 | The notice a guest agrees to | Photos the guest is probably in | Full-screen viewer |
-| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Choosing photos to remove"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Demo sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
-| Asking for a photo to be removed | Sample selfies in the demo | Home page |
+| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Choosing what to remove"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Demo sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
+| Choosing what to remove | Sample selfies in the demo | Home page |
+| <img src="docs/images/screens/guest-notify.jpg" width="220" alt="Turning on new-photo alerts"> | <img src="docs/images/screens/guest-alerts.jpg" width="220" alt="New photos on the private alert link"> | |
+| Opting in to new-photo alerts | The private link with new photos | |
 
 ## Limits
 
