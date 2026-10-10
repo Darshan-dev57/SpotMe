@@ -23,7 +23,7 @@ export function SelfieStep({
 }: {
   notice: Notice;
   token: string;
-  onResult: (r: SearchResult) => void;
+  onResult: (r: SearchResult, selfie: Blob) => void;
   onLostAccess: () => void;
 }) {
   const camera = useRef<HTMLInputElement>(null);
@@ -45,7 +45,7 @@ export function SelfieStep({
     try {
       const body = await shrinkImage(file);
       const result = await api<SearchResult>("/api/attendee/search", { token, body, contentType: "image/jpeg" });
-      onResult(result);
+      onResult(result, body);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         onLostAccess();

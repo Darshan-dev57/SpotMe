@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Download, Expand, Flag, RefreshCw, Trash2 } from "lucide-react";
+import { Bell, Check, Copy, Download, Expand, Flag, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoViewer } from "@/components/attendee/photo-viewer";
 import { Field } from "@/components/field";
@@ -21,7 +21,7 @@ import {
   mediaUrl,
   saveBlob,
 } from "@/lib/api";
-import { plural } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import { photosLeft, splitPhotos } from "@/lib/removal";
 import { cn } from "@/lib/utils";
 
@@ -31,12 +31,14 @@ export function Results({
   notice,
   token,
   result,
+  selfie,
   onAgain,
   onLeft,
 }: {
   notice: Notice;
   token: string;
   result: SearchResult;
+  selfie: Blob;
   onAgain: () => void;
   onLeft: () => void;
 }) {
@@ -265,6 +267,8 @@ export function Results({
         </>
       )}
 
+      {mode !== "remove" && <NotifyMe token={token} selfie={selfie} until={notice.expiresAt} />}
+
       <div className="mt-16 border-t pt-6">
         <h2 className="font-medium">Leave this event</h2>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
@@ -328,5 +332,66 @@ function Choice({
         <span className="block text-sm text-muted-foreground">{detail}</span>
       </span>
     </label>
+  );
+}
+
+/** Opt in to new-photo alerts: the selfie is sent once more and the guest gets a private link to keep. */
+function NotifyMe({ token, selfie, until }: { token: string; selfie: Blob; until: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function turnOn() {
+    setBusy(true);
+    try {
+      const res = await api<{ token: string }>("/api/attendee/alerts", {
+        token,
+        body: selfie,
+        contentType: "image/jpeg",
+      });
+      setUrl(`${window.location.origin}/alerts#${res.token}`);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not turn on alerts.");
+    }
+    setBusy(false);
+  }
+
+  async function copy() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied.");
+    } catch {
+      toast.error("Could not copy. Press and hold the Open button to copy the link.");
+    }
+  }
+
+  return (
+    <div className="mt-10 rounded-xl border bg-card p-5">
+      <h2 className="font-medium">New photos later?</h2>
+      {url ? (
+        <>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Keep this private link. It shows new photos of you until {formatDate(until)}.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={copy}>
+              <Copy /> Copy link
+            </Button>
+            <Button size="sm" variant="outline" asChild>
+              <a href={url} target="_blank" rel="noreferrer">
+                Open
+              </a>
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-muted-foreground">We keep your face data for this until the event ends.</p>
+          <Button size="sm" className="mt-3" onClick={turnOn} disabled={busy}>
+            {busy ? <Spinner /> : <Bell />} Notify me
+          </Button>
+        </>
+      )}
+    </div>
   );
 }

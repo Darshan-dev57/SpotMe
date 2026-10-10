@@ -123,7 +123,8 @@ public class EventController {
 
     /**
      * Changing the notice bumps its version. Attendees agreed to the old text, so their
-     * sessions stop working until they read and accept the new one.
+     * sessions stop working until they read and accept the new one, and the face vectors kept
+     * for new-photo alerts are deleted (they were kept under the old purpose).
      */
     @PostMapping("/{id}/notice")
     public Map<String, Object> updateNotice(@PathVariable UUID id, @Valid @RequestBody NoticeRequest req,
@@ -132,6 +133,7 @@ public class EventController {
         access.requireLive(id);
         jdbc.update("UPDATE events SET purpose_notice = ?, notice_version = notice_version + 1 WHERE id = ?",
                 req.purposeNotice().trim(), id);
+        jdbc.update("DELETE FROM photo_alerts WHERE event_id = ?", id);
         return get(id, http);
     }
 
@@ -235,6 +237,7 @@ public class EventController {
     public Map<String, Object> revoke(@PathVariable UUID id, @PathVariable UUID membershipId, HttpServletRequest http) {
         access.requireOwner(id, http);
         jdbc.update("UPDATE memberships SET revoked_at = now() WHERE id = ? AND event_id = ?", membershipId, id);
+        jdbc.update("DELETE FROM photo_alerts WHERE membership_id = ? AND event_id = ?", membershipId, id);
         jdbc.update("DELETE FROM sessions WHERE membership_id = ?", membershipId);
         return Map.of("revoked", true);
     }

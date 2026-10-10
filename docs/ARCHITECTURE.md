@@ -52,6 +52,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | `jobs` | kind, target, dedupe key, state, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases |
 | `removal_requests` | the guest's choice (`solo` or `erase`), the solo photos to delete, note, decision | |
 | `photo_edits` | group photo, face box to erase, status | only for `erase`; the photo stays hidden while an edit is open |
+| `photo_alerts` | one guest's face vector, hash of the alert link token, `seen_until` | only after the guest opts in; deleted with the event, on withdrawal, revocation, a notice change or when turned off |
 | `wrong_match_reports` | guest + photo | hides that photo from that guest's results only |
 | `worker_heartbeats` | worker id, last seen, jobs done | drives the "worker active" badge on the organizer page |
 
@@ -117,6 +118,9 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
   vector and lifts the suppression. Erasing is switched off for now (decision 21). Rejection lifts the
   suppression unless another open request still covers the photo.
 - **Wrong match:** hides the photo from the reporting guest only and counts it for the organizer.
+- **New-photo alerts:** a guest who opts in after a search gets a private link; opening it searches the event
+  for photos indexed after `seen_until` with the kept vector. Turning alerts off, withdrawing, revocation, a
+  notice change and the event purge all delete the vector.
 - **Withdrawal:** the guest's sessions are deleted and the invite stops working.
 - **Expiry:** every minute the sweeper starts deletion for events past `expires_at`. Deletion bumps the
   `deletion_epoch` (so in-flight indexing results are thrown away), then a `PURGE_EVENT` job removes files,
@@ -128,7 +132,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 |---|---|
 | Who can search | Only a guest with a personal invite who agreed to the current notice, for a published, unexpired event |
 | Scope | Every face row carries its `event_id`; the search query always filters by the guest's event |
-| Selfies | Never written to disk or the database; error logs carry only the exception type and message |
+| Selfies | Never written to disk or the database; error logs carry only the exception type and message. A guest who opts in to alerts has the vector (not the image) kept until the event ends |
 | Credentials | Session and invite tokens are random (256 bits) and stored as SHA-256; invite tokens travel after `#` |
 | Passwords | BCrypt; 10 login attempts per email per minute; the same answer for unknown email and wrong password |
 | Photo access | HMAC-signed links with subject and expiry, plus a live access check when the link is used |
@@ -190,7 +194,8 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
   filtered index.
 - **The hosted box is small.** Peak memory while indexing (467 to 493 MB) is about the same as its 473 MB of
   RAM, so it relies on swap; photos are capped at 16 megapixels and 60 per event there.
-- **No automatic delivery.** Because selfies are not kept, guests are not notified about photos added later.
+- **Alerts are pull, not push.** A guest who opts in sees new photos when they open their private link; nothing
+  is sent to them.
 - **Erasing a guest from group photos is switched off.** Guests can remove their solo photos; the erase path is
   built but waits for a model that fits the box (`docs/MEASUREMENTS.md`).
 - **JPEG and PNG only.** HEIC photos from iPhones must be converted first.

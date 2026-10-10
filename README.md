@@ -4,7 +4,8 @@ Find your photos from a private event with one selfie.
 
 An organizer uploads the event's photos and a background worker indexes the faces. Each invited guest
 agrees to a short notice, takes one selfie and gets back the photos they are probably in, from that event
-only. The selfie is used for that one search and then discarded.
+only. The selfie is used for that one search and then discarded; a guest who opts in to new-photo alerts has
+only their face vector kept until the event ends.
 
 **Live demo:** https://spotme.sites.tab.bot (tap *Try the demo*, then pick a sample selfie)
 
@@ -71,6 +72,7 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 - Consent to a versioned notice before searching
 - One selfie (camera or gallery), results in under a second
 - Full-screen viewer, single downloads or a ZIP of selected photos
+- Opt-in "notify me": a private link that shows new photos of you as the organizer adds them
 - "Not me" reports and consent withdrawal
 - Removal choice: only my solo photos, or erase me from group photos too (erasing is switched off for now)
 
@@ -206,7 +208,7 @@ scripts/        model and demo photo downloads
   shared storage and a shared rate limit store.
 - Exact search is fast for thousands of faces per event; an event with millions of faces would need
   partitioning or a filtered vector index.
-- Selfies are not kept, so guests are not told about photos added after their search.
+- New-photo alerts are in the app only: a guest sees them by opening their private link, nothing is pushed.
 - Erasing a guest from group photos is built but switched off: the inpainting it needs looks natural only when
   the person stands apart, and needs about 1 GB of memory ([test results](docs/MEASUREMENTS.md)).
 - JPEG and PNG only. HEIC photos must be converted first.
@@ -218,7 +220,7 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data model, the four main flows, security model, hosting
-- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-one design decisions with the alternative, the tradeoff and what would change them
+- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-two design decisions with the alternative, the tradeoff and what would change them
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 
