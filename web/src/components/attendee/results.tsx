@@ -155,18 +155,18 @@ export function Results({
                       </span>
                     )}
                     {mode === "browse" && (
-                      <div className="absolute right-1.5 bottom-1.5 flex gap-1">
+                      <div className="mt-1 flex justify-end gap-0.5">
                         <button
                           type="button"
                           onClick={() => setViewing(i)}
-                          className="flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm"
+                          className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                           aria-label="View larger"
                         >
                           <Expand className="size-4" />
                         </button>
                         <a
                           href={mediaUrl(p.downloadUrl)}
-                          className="flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm"
+                          className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                           aria-label="Download this photo"
                         >
                           <Download className="size-4" />
@@ -174,7 +174,7 @@ export function Results({
                         <button
                           type="button"
                           onClick={() => wrongMatch(p.id)}
-                          className="flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm"
+                          className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                           aria-label="Not me: report a wrong match"
                           title="Not me"
                         >

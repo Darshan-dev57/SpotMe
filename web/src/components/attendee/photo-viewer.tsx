@@ -40,7 +40,8 @@ export function PhotoViewer({
 
   if (!photo) return null;
 
-  const round = "flex size-11 items-center justify-center rounded-full bg-background/10 text-background hover:bg-background/20";
+  const round =
+    "flex size-11 items-center justify-center rounded-full bg-foreground/70 text-background ring-1 ring-background/25 hover:bg-foreground/90";
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Photo" className="fixed inset-0 z-50 flex flex-col bg-foreground">
