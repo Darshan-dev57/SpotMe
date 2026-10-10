@@ -35,13 +35,13 @@ class PrivacyIntegrationTest extends IntegrationTest {
     void removalHidesAtOnceAndApprovalPurgesFilesVectorsAndBlocksReupload() throws Exception {
         String org = api.registerOrganizer("removal@example.com");
         String event = api.createEvent(org, "Removal");
-        String photoId = (String) api.upload(event, org, "crew-group.jpg", Api.fixture("crew-group.jpg")).getBody().get("id");
+        String photoId = (String) api.upload(event, org, "hurley.jpg", Api.fixture("hurley.jpg")).getBody().get("id");
         drainJobs();
         api.post("/api/events/" + event + "/publish", org, null);
         String doug = api.joinAsAttendee(org, event, "Doug");
         assertThat(found(doug)).containsExactly(photoId);
 
-        var req = api.post("/api/attendee/removals", doug, Map.of("photoIds", List.of(photoId), "note", "please remove"));
+        var req = api.post("/api/attendee/removals", doug, Api.removal("solo", photoId, "please remove"));
         assertThat(req.getStatusCode().value()).isEqualTo(201);
         // hidden immediately, before anyone approves
         assertThat(found(doug)).isEmpty();
@@ -60,7 +60,7 @@ class PrivacyIntegrationTest extends IntegrationTest {
         assertThat(jdbc.queryForObject("SELECT status FROM removal_requests WHERE id = ?::uuid", String.class, requestId))
                 .isEqualTo("completed");
 
-        var again = api.upload(event, org, "crew-group.jpg", Api.fixture("crew-group.jpg"));
+        var again = api.upload(event, org, "hurley.jpg", Api.fixture("hurley.jpg"));
         assertThat(again.getStatusCode().value()).isEqualTo(409);
         assertThat(again.getBody()).containsEntry("code", "removed_photo");
     }
@@ -74,7 +74,7 @@ class PrivacyIntegrationTest extends IntegrationTest {
         api.post("/api/events/" + event + "/publish", org, null);
         String doug = api.joinAsAttendee(org, event, "Doug");
 
-        String requestId = (String) api.post("/api/attendee/removals", doug, Map.of("photoIds", List.of(photoId))).getBody().get("id");
+        String requestId = (String) api.post("/api/attendee/removals", doug, Api.removal("solo", photoId, null)).getBody().get("id");
         assertThat(found(doug)).isEmpty();
         api.post("/api/events/" + event + "/removals/" + requestId + "/reject", org, null);
         assertThat(found(doug)).containsExactly(photoId);
