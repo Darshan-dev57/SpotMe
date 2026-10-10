@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Where the photos are in the pipeline: one bar split into ready / processing / queued / failed.
- * "Uploaded" is not "searchable", so the organizer sees both.
+ * "Uploaded" is not "searchable", so the organizer sees both. Empty parts and an idle worker are not shown.
  */
 export function Pipeline({
   counts,
@@ -33,13 +33,15 @@ export function Pipeline({
           <span className="text-muted-foreground"> of {plural(total, "photo")} searchable</span>
           {hidden > 0 && <span className="text-muted-foreground"> · {hidden} hidden</span>}
         </p>
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <span
-            aria-hidden="true"
-            className={cn("size-1.5 rounded-full", worker.active ? "bg-ok" : "bg-destructive")}
-          />
-          {worker.active ? (working ? "Indexing faces" : "Worker idle") : "Worker offline"}
-        </p>
+        {(working || !worker.active) && (
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className={cn("size-1.5 rounded-full", worker.active ? "bg-ok" : "bg-destructive")}
+            />
+            {worker.active ? "Indexing faces" : "Worker offline"}
+          </p>
+        )}
       </div>
       <div
         className="mt-3 flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-muted"
@@ -58,15 +60,17 @@ export function Pipeline({
             ))}
       </div>
       <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
-        {parts.map((p) => (
-          <div key={p.key} className="flex items-center gap-1.5">
-            <span aria-hidden="true" className={cn("size-2 rounded-sm", p.className)} />
-            <dt className="sr-only">{p.label}</dt>
-            <dd>
-              <span className="tabular text-foreground">{p.value}</span> {p.label}
-            </dd>
-          </div>
-        ))}
+        {parts
+          .filter((p) => p.value > 0)
+          .map((p) => (
+            <div key={p.key} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className={cn("size-2 rounded-sm", p.className)} />
+              <dt className="sr-only">{p.label}</dt>
+              <dd>
+                <span className="tabular text-foreground">{p.value}</span> {p.label}
+              </dd>
+            </div>
+          ))}
       </dl>
     </div>
   );
