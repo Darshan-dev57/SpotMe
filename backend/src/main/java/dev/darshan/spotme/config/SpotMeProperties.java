@@ -16,7 +16,8 @@ public record SpotMeProperties(
         Face face,
         Search search,
         Worker worker,
-        Eval eval) {
+        Eval eval,
+        Demo demo) {
 
     public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide, int maxPhotosPerEvent) {
     }
@@ -38,5 +39,12 @@ public record SpotMeProperties(
 
     /** The evaluation endpoint returns raw distances, so it is off unless the eval profile turns it on. */
     public record Eval(boolean enabled) {
+    }
+
+    /**
+     * The public demo: a published event filled from photosDir that any visitor can join.
+     * invitesPerMinute limits demo invites per IP address.
+     */
+    public record Demo(boolean enabled, String photosDir, int invitesPerMinute) {
     }
 }
