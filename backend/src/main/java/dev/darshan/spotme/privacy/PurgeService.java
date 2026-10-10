@@ -118,6 +118,7 @@ public class PurgeService {
             jdbc.update("DELETE FROM photos WHERE event_id = ?", eventId);
             jdbc.update("DELETE FROM removal_requests WHERE event_id = ?", eventId);
             jdbc.update("DELETE FROM photo_alerts WHERE event_id = ?", eventId);
+            jdbc.update("DELETE FROM drive_imports WHERE event_id = ?", eventId); // cascades the file rows
             jdbc.update("DELETE FROM memberships WHERE event_id = ?", eventId); // cascades sessions and reports
             jdbc.update("UPDATE events SET status = 'purged', purpose_notice = '', purged_at = now() WHERE id = ?", eventId);
             if (!queue.complete(job)) {
