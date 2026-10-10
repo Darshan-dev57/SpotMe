@@ -69,12 +69,68 @@ A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotm
 
 ## Architecture
 
-![SpotMe architecture](docs/images/architecture.png)
+```mermaid
+flowchart TD
+    users(("Organizer / Guest")) --> ui["Next.js static UI<br/>served by Spring"]
+    ui --> api
+
+    subgraph app["Spring Boot application (Java 21)"]
+        api["REST API<br/>auth, hashed tokens, rate limits"]
+        events["Events, invites,<br/>consent, removal"]
+        intake["PhotoIntake<br/>magic bytes, pixel cap, JPEG re-encode,<br/>SHA-256 dedupe"]
+        search["Event-scoped search<br/>signed photo links"]
+        worker["Job worker<br/>claims by priority, lease + token"]
+        index["INDEX_PHOTO"]
+        drivejobs["DRIVE_LIST / DRIVE_FILE<br/>one photo per job"]
+        purge["PURGE_PHOTO / PURGE_EVENT"]
+        face["Face module<br/>pretrained YuNet + SFace"]
+    end
+
+    subgraph pg["PostgreSQL 16 + pgvector"]
+        queue[("jobs<br/>FOR UPDATE SKIP LOCKED")]
+        tables[("events, photos, sessions,<br/>faces vector(128)")]
+    end
+    files[("Photo files<br/>local disk")]
+    gdrive["Google Drive<br/>public folder"]
+
+    api --> events
+    api -->|"upload, folder"| intake
+    api -->|"Drive link"| queue
+    api --> search
+    events --> tables
+    events -->|"deletion"| queue
+    intake -->|"photo row + job,<br/>one transaction"| queue
+    intake --> files
+    worker -->|"claim"| queue
+    worker --> index
+    worker --> drivejobs
+    worker --> purge
+    drivejobs -->|"https, Google hosts only"| gdrive
+    drivejobs -->|"same path as uploads"| intake
+    index --> face
+    index -->|"face vectors"| tables
+    search --> face
+    search -->|"cosine distance,<br/>one event"| tables
+    purge --> files
+    purge --> tables
+
+    classDef core fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef store fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef small fill:#f1f5f9,stroke:#94a3b8,color:#334155
+    classDef outside fill:#e0e7ff,stroke:#4f46e5,color:#312e81
+    class ui,api,events,intake,search,worker,index,drivejobs,purge core
+    class queue,tables,files store
+    class face small
+    class users,gdrive outside
+```
+
+<sub>Diagram generated with [GitDiagram](https://gitdiagram.com/Darshan-dev57/spotme), edited by hand.</sub>
 
 One Spring Boot application holds all of the logic: the REST API, the job worker, the ingestion pipeline,
 search and the privacy rules. The web UI is a static Next.js export served by the same application, so
 production is a single process plus PostgreSQL. The same jar can also run as API only or worker only
-(Spring profiles), because the queue lives in the database. The reasoning behind each choice is in
+(Spring profiles), because the queue lives in the database. A per-component view with the request paths is in
+[docs/images/architecture.png](docs/images/architecture.png). The reasoning behind each choice is in
 [docs/DECISIONS.md](docs/DECISIONS.md), and the components, data model and flows are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
