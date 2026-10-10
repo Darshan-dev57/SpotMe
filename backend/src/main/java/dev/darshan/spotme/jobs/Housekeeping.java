@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Periodic background chores, run only in the worker process:
- * reaping expired leases, starting deletion of expired events, removing orphan files,
+ * reaping expired leases, starting deletion of expired events, removing expired sessions and orphan files,
  * and a heartbeat so the organizer page can show "worker active".
  */
 @Component
@@ -62,7 +62,13 @@ public class Housekeeping {
     public void scheduledExpiry() {
         if (enabled) {
             expireEvents();
+            removeExpiredSessions();
         }
+    }
+
+    /** Expired sessions can never log anyone in again; deleting them keeps the table small. */
+    public int removeExpiredSessions() {
+        return jdbc.update("DELETE FROM sessions WHERE expires_at <= now()");
     }
 
     /** Starts deletion for every event past its expiry date. Returns how many were started. */
