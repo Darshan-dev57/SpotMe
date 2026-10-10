@@ -184,8 +184,8 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
 - **Exact search grows with event size.** Fine for hundreds or thousands of faces per event (under a
   millisecond in the benchmark); a single event with millions of faces would need partitioning or a
   filtered index.
-- **The hosted box is small.** Peak memory while indexing is above its 473 MB of RAM, so it relies on swap; photos
-  are capped at 16 megapixels and 60 per event there.
+- **The hosted box is small.** Peak memory while indexing (467 to 493 MB) is about the same as its 473 MB of
+  RAM, so it relies on swap; photos are capped at 16 megapixels and 60 per event there.
 - **No automatic delivery.** Because selfies are not kept, guests are not notified about photos added later.
 - **Removal is per photo.** Removing a group photo removes it for everyone in it; blurring one face is not
   implemented.
