@@ -64,7 +64,9 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 
 **Organizers**
 - Events with a purpose notice and an automatic deletion date (at most 90 days)
-- Parallel photo upload with duplicate detection and live indexing progress
+- Upload photos or a whole folder (subfolders included, drag and drop works too), 4 at a time, with duplicate
+  detection and live indexing progress
+- JPEG, PNG, HEIC/HEIF, WebP, AVIF, TIFF, BMP and GIF; every photo is stored as a clean JPEG
 - One private invite link per guest, with revoke
 - Review queue for removal requests: delete permanently or keep
 
