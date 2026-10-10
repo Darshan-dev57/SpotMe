@@ -95,20 +95,22 @@ public class SearchService {
      * Hidden, suppressed and "wrong match"-reported photos are left out.
      */
     public List<Match> search(UUID eventId, UUID membershipId, float[] query, double maxDistance, int limit) {
+        // <=> is pgvector's cosine DISTANCE (1 - cosine similarity): smaller is more alike
         return jdbc.query("""
-                SELECT f.photo_id, min(f.embedding <=> ?::vector) AS distance
+                WITH q AS (SELECT ?::vector AS v)
+                SELECT f.photo_id, min(f.embedding <=> q.v) AS distance
                 FROM faces f
+                CROSS JOIN q
                 JOIN photos p ON p.id = f.photo_id
                 WHERE f.event_id = ? AND f.model_version = ?
                   AND p.status = 'ready' AND p.hidden_at IS NULL AND p.suppressed_at IS NULL
                   AND NOT EXISTS (SELECT 1 FROM wrong_match_reports w WHERE w.photo_id = p.id AND w.membership_id = ?)
                 GROUP BY f.photo_id
-                HAVING min(f.embedding <=> ?::vector) <= ?
+                HAVING min(f.embedding <=> q.v) <= ?
                 ORDER BY distance
                 LIMIT ?
                 """, (rs, i) -> new Match(rs.getObject(1, UUID.class), rs.getDouble(2)),
-                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, membershipId,
-                Vectors.toPgVector(query), maxDistance, limit);
+                Vectors.toPgVector(query), eventId, FaceEngine.MODEL_VERSION, membershipId, maxDistance, limit);
     }
 
     public Result run(UUID eventId, UUID membershipId, byte[] selfie, double maxDistance, int limit)
