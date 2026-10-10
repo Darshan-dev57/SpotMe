@@ -35,12 +35,14 @@ export function Settings({ event, token, onChanged }: { event: EventDetail; toke
   return (
     <div className="grid max-w-2xl gap-10">
       <section className="grid gap-4">
-        <Field
-          id="notice-edit"
-          label="Notice guests agree to"
-          hint={`Version ${event.noticeVersion}. Saving a change asks every guest to read and agree again.`}
-        >
-          <Textarea id="notice-edit" rows={5} value={notice} maxLength={1000} onChange={(e) => setNotice(e.target.value)} />
+        <Field id="notice-edit" label="Notice guests agree to" hint="Guests must agree again after a change.">
+          <Textarea
+            id="notice-edit"
+            rows={5}
+            value={notice}
+            maxLength={1000}
+            onChange={(e) => setNotice(e.target.value)}
+          />
         </Field>
         <Button
           variant="outline"
@@ -57,9 +59,7 @@ export function Settings({ event, token, onChanged }: { event: EventDetail; toke
       <section>
         <h3 className="font-medium">Delete this event</h3>
         <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
-          It is deleted automatically on {formatDate(event.expiresAt)}. Deleting now removes {plural(total, "photo")},
-          their thumbnails, every face vector and all guest links. Photos guests already downloaded stay on their
-          phones.
+          Deletes {plural(total, "photo")}, face data and guest links now instead of on {formatDate(event.expiresAt)}.
         </p>
         {confirming ? (
           <div className="mt-4 flex flex-wrap gap-2">

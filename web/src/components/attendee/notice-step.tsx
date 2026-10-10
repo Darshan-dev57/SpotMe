@@ -37,10 +37,10 @@ export function NoticeStep({
   }
 
   const facts = [
-    "Your selfie is compared in memory and never saved.",
+    "Your selfie is never saved.",
     `Only photos from ${notice.eventTitle} are searched.`,
-    "Group photos can also show other guests who agreed.",
-    "Results are likely matches. They don't prove who anyone is.",
+    "Group photos also show other guests.",
+    "Matches are likely, not proof of who anyone is.",
     `Everything is deleted on ${formatDate(notice.expiresAt)}.`,
   ];
 
@@ -50,9 +50,8 @@ export function NoticeStep({
         {notice.demo ? "Public demo · anyone can try it" : `${notice.organizer} invited ${notice.invitedAs}`}
       </p>
       <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{notice.eventTitle}</h1>
-      <p className="mt-4 max-w-prose text-lg leading-relaxed">Find the photos you are in with one selfie.</p>
 
-      <section className="mt-8 rounded-xl border bg-card p-5 sm:p-6">
+      <section className="mt-6 rounded-xl border bg-card p-5 sm:p-6">
         <h2 className="font-medium">From the organizer</h2>
         <p className="mt-2 leading-relaxed whitespace-pre-line text-muted-foreground">{notice.purposeNotice}</p>
         <ul className="mt-5 grid gap-2.5 border-t pt-5">
@@ -65,7 +64,11 @@ export function NoticeStep({
         </ul>
       </section>
 
-      {error && <p className="mt-4 text-sm text-destructive" role="alert">{error}</p>}
+      {error && (
+        <p className="mt-4 text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
       <div className="mt-6 flex flex-wrap gap-3">
         <Button size="lg" onClick={agree} disabled={busy}>
           {busy && <Spinner />} I agree, continue

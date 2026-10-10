@@ -85,8 +85,7 @@ export default function JoinPage() {
           <div className="pt-8">
             <h1 className="text-2xl font-semibold">No problem</h1>
             <p className="mt-2 max-w-prose text-muted-foreground">
-              Nothing was searched and no photo of you was taken. You can open your link again any time before the event
-              is deleted.
+              Nothing was searched. Your link works until the event is deleted.
             </p>
           </div>
         )}
@@ -118,8 +117,7 @@ export default function JoinPage() {
           <div className="pt-8">
             <h1 className="text-2xl font-semibold">You have left this event</h1>
             <p className="mt-2 max-w-prose text-muted-foreground">
-              Your link no longer works and you can&apos;t search this album. Removal requests you sent are still
-              handled by the organizer.
+              Your link no longer works. Removal requests you sent still go to the organizer.
             </p>
           </div>
         )}

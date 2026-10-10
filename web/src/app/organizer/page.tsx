@@ -41,7 +41,6 @@ export default function OrganizerSignIn() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-md px-5 pt-6 pb-16">
         <h1 className="text-3xl font-semibold">For organizers</h1>
-        <p className="mt-2 text-muted-foreground">Create private events, upload the album, and invite your guests.</p>
 
         <Tabs defaultValue="login" className="mt-8" onValueChange={() => setError(null)}>
           <TabsList className="w-full">
