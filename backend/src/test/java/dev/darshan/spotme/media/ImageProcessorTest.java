@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ImageProcessorTest {
 
     static SpotMeProperties props(long maxPixels) {
-        return new SpotMeProperties("/tmp", "/tmp", "http://localhost:3000", "x",
+        return new SpotMeProperties("/tmp", "/tmp", "http://localhost:3000", "", "x",
                 new SpotMeProperties.Upload(5_000_000, maxPixels, 2, 480),
                 new SpotMeProperties.Face(0.8f, 1280, 40, 1, 1),
                 new SpotMeProperties.Search(0.6, 100, 10, Duration.ofMinutes(10)),

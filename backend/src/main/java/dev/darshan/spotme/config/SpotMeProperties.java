@@ -10,6 +10,7 @@ public record SpotMeProperties(
         String storageDir,
         String modelsDir,
         String webOrigin,
+        String webDir,
         String mediaSecret,
         Upload upload,
         Face face,
