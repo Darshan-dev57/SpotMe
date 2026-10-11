@@ -4,6 +4,7 @@ import dev.darshan.spotme.config.SpotMeProperties;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -35,6 +36,11 @@ public class LocalPhotoStorage implements PhotoStorage {
     @Override
     public byte[] get(String key) throws IOException {
         return Files.readAllBytes(resolve(key));
+    }
+
+    @Override
+    public InputStream open(String key) throws IOException {
+        return Files.newInputStream(resolve(key));
     }
 
     @Override
