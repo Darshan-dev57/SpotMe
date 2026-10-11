@@ -126,4 +126,5 @@ the sample event indexed all 36 photos and the sample Behnken selfie found 15 ph
 | port 5434 is taken | another PostgreSQL uses it; stop it or change the port in `docker-compose.yml` and `SPOTME_DB_URL` |
 | guest links open `localhost:3000` | set `SPOTME_WEB_ORIGIN` to the address you open the app on |
 | `face models missing` in the log | run `./scripts/fetch-models.sh` (needs internet once) |
+| `organizer@example.com already exists ... with another password` | the database still has the account from an earlier clone; sign up a new account, or `docker compose down -v` for an empty database |
 | the app stops while starting | read the end of `data/spotme.log`; most often the database is not up yet |
