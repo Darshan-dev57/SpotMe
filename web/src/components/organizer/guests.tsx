@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { Check, Copy, QrCode, UserMinus } from "lucide-react";
+import { Check, Copy, Download, QrCode, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, Invite, api } from "@/lib/api";
+import { qrFileName, qrPng } from "@/lib/qr";
 
 type NewInvite = { id: string; label: string; joinUrl: string };
 
@@ -123,7 +123,8 @@ function FreshInvite({ invite }: { invite: NewInvite }) {
   }
 
   async function toggleQr() {
-    setQr(qr ? null : await QRCode.toDataURL(invite.joinUrl, { margin: 1, width: 240 }));
+    // 600 px: sharp on screen and big enough to print on a table card
+    setQr(qr ? null : await qrPng(invite.joinUrl, 600));
   }
 
   return (
@@ -140,8 +141,20 @@ function FreshInvite({ invite }: { invite: NewInvite }) {
         </div>
       </div>
       {qr && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={qr} alt={`QR code that opens ${invite.label}'s invite`} className="mt-3 size-40 rounded-md border" />
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qr} alt={`QR code that opens ${invite.label}'s invite`} className="size-44 rounded-md border bg-white" />
+          <div className="grid gap-2">
+            <p className="max-w-48 text-sm text-muted-foreground">
+              Scanning opens {invite.label}&apos;s own invite. Share it only with them.
+            </p>
+            <Button variant="outline" size="sm" asChild className="justify-self-start">
+              <a href={qr} download={qrFileName(invite.label)}>
+                <Download /> Download PNG
+              </a>
+            </Button>
+          </div>
+        </div>
       )}
     </li>
   );
