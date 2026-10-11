@@ -132,4 +132,23 @@ class AttendeeIntegrationTest extends IntegrationTest {
         assertThat(api.post("/api/auth/login", null, Map.of("email", "limit@example.com", "password", "password123"))
                 .getStatusCode().value()).isEqualTo(429);
     }
+
+    @Test
+    void guestResultsCarryNoFaceBoxesOrVectors() {
+        List<Map<String, Object>> photos = search(attendee);
+        assertThat(photos).isNotEmpty();
+        for (Map<String, Object> photo : photos) {
+            assertThat(photo.keySet()).containsOnly("id", "thumbUrl", "downloadUrl", "faceId", "solo");
+        }
+    }
+
+    @Test
+    void aBadRequestGetsShortJsonWithoutInternals() {
+        var res = api.post("/api/attendee/wrong-match", attendee, Map.of("photoId", "not-a-uuid"));
+        assertThat(res.getStatusCode().value()).isEqualTo(400);
+        assertThat(res.getHeaders().getContentType()).isNotNull();
+        assertThat(res.getHeaders().getContentType().isCompatibleWith(MediaType.APPLICATION_JSON)).isTrue();
+        assertThat(res.getBody()).containsOnlyKeys("code", "message");
+        assertThat(res.getBody().toString()).doesNotContain("Exception", "at dev.", "trace");
+    }
 }
