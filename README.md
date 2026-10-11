@@ -232,6 +232,7 @@ query, pool size and memory limits were tuned on the hosted box. Details in
 - Photos are private by default; select venue and crowd shots in bulk and make them public for every guest
 - One private invite link per guest, with a QR code to download as a PNG, and revoke
 - Review queue for removal requests: delete permanently or keep
+- Queued, indexed and failed counts update live on the event page over Server-Sent Events, with polling as a fallback
 
 **Guests**
 - Consent to a versioned notice before searching
