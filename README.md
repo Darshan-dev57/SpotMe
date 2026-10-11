@@ -230,7 +230,7 @@ query, pool size and memory limits were tuned on the hosted box. Details in
 - Import a public Google Drive folder by pasting its link: no API key, subfolders included, runs as
   background jobs with progress
 - Photos are private by default; select venue and crowd shots in bulk and make them public for every guest
-- One private invite link per guest, with revoke
+- One private invite link per guest, with a QR code to download as a PNG, and revoke
 - Review queue for removal requests: delete permanently or keep
 
 **Guests**
