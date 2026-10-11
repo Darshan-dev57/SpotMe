@@ -26,7 +26,7 @@ export that the same application serves, so in production a single process answe
 |---|---|
 | `auth` | Organizer accounts (BCrypt), opaque bearer sessions stored as SHA-256 hashes, the interceptor that decides which token may call which path |
 | `event` | Events, the purpose notice, publishing, invites, review (hide / unhide), removal decisions |
-| `media` | `PhotoIntake` (validate, re-encode, thumbnail, store, enqueue), `ImageProcessor` (six formats decoded on the server), `PhotoStorage`, signed media links |
+| `media` | `PhotoIntake` (validate, re-encode, thumbnail, store, enqueue), `ImageProcessor` (six formats decoded on the server), `PhotoStorage` (local disk or an S3 bucket), signed media links |
 | `jobs` | The Postgres job queue, the worker loop, the indexing handler, housekeeping (lease reaper, expiry sweep, orphan files) |
 | `face` | `FaceEngine` (OpenCV YuNet + SFace) and a small pool so a fixed number of engines are shared by threads |
 | `search` | Selfie rules (exactly one clear face) and the event-scoped distance query |
@@ -233,8 +233,9 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
 - **Accuracy is measured on a benchmark, not on real events.** LFW composites are mostly frontal, well-lit
   faces; real event photos have turned heads, motion blur, sunglasses and small faces in crowds, so expect
   lower recall. Recall on the tune split was 0.684.
-- **One machine.** Photo files are on local disk and the rate limiters are in memory, so running two API
-  instances needs shared storage and a shared rate limit store.
+- **Rate limits in memory.** Photos can live in a shared S3-compatible bucket (`S3PhotoStorage`,
+  [STORAGE.md](STORAGE.md)), but the rate limiters are in memory, so two API instances would each keep their
+  own limits.
 - **Exact search grows with event size.** Fine for hundreds or thousands of faces per event (under a
   millisecond in the benchmark); a single event with millions of faces would need partitioning or a
   filtered index.

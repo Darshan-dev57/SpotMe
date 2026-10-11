@@ -375,3 +375,12 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 ## 27. Live progress over Server-Sent Events
 
 - **Choice:** Spring `SseEmitter`, not WebSocket. **Why:** the counts only flow from server to browser, and SSE is plain HTTP that works through the existing auth interceptor and proxies with no extra protocol or library.
+
+## 28. Photo storage behind an interface, with an S3 implementation
+
+- **Choice:** `PhotoStorage` with `LocalPhotoStorage` (default) and `S3PhotoStorage`, chosen by
+  `spotme.storage-type`; guests still go through the app's signed link, which then redirects to a bucket link
+  signed for 60 s. **Why:** the rest of the code never knows where bytes live, and a bucket lets more than one
+  app instance share photos. **Alternative:** making the bucket public or signing bucket links for the whole
+  search session; both would let a link outlive a revoked invite. **Tradeoff:** one extra redirect per photo, and
+  a guest whose access just ended keeps at most 60 s on a link already opened. The live site stays on local disk.
