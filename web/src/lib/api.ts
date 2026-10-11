@@ -165,3 +165,20 @@ export type AlertCheck = {
   newCount: number;
   photos: { id: string; thumbUrl: string; downloadUrl: string }[];
 };
+
+export type DriveImport = {
+  id: string;
+  folderUrl: string;
+  status: "listing" | "importing" | "done" | "failed";
+  found: number;
+  overLimit: number;
+  skipped: number;
+  queued: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+  failures: { name: string; error: string }[];
+};

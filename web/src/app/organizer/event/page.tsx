@@ -10,6 +10,7 @@ import { PhotoGrid } from "@/components/organizer/photo-grid";
 import { Pipeline } from "@/components/organizer/pipeline";
 import { Removals } from "@/components/organizer/removals";
 import { Settings } from "@/components/organizer/settings";
+import { DriveImporter } from "@/components/organizer/drive-import";
 import { Uploader } from "@/components/organizer/uploader";
 import { OrganizerHeader, handleAuthError, useOrganizer } from "@/components/organizer-shell";
 import { StatusPill } from "@/components/status-pill";
@@ -167,6 +168,7 @@ function EventDashboard() {
 
               <TabsContent value="photos" className="mt-6">
                 <Uploader eventId={event.id} token={session.token} onUploaded={load} />
+                <DriveImporter eventId={event.id} token={session.token} onImported={load} />
                 <PhotoGrid photos={photos} eventId={event.id} token={session.token} onChanged={load} />
                 {photos.length < total(event) && (
                   <div className="mt-6 flex flex-wrap items-center gap-3">
