@@ -183,7 +183,7 @@ class node_jobs,node_worker,node_index,node_face,node_search,node_results,node_a
 class node_removal,node_purge,node_organizer_actor,node_guest_actor,node_drive_service toneIndigo
 ```
 
-<sub>Diagram generated with [GitDiagram](https://gitdiagram.com/Darshan-dev57/spotme). Its layout and labels are kept; four arrows were corrected against the code and three missing ones added (the raw output is in [docs/diagrams/gitdiagram-raw.mmd](docs/diagrams/gitdiagram-raw.mmd)). Boxes link to their source files.</sub>
+<sub>Each box links to its source file.</sub>
 
 One Spring Boot application holds all of the logic: the REST API, the job worker, the ingestion pipeline,
 search and the privacy rules. The web UI is a static Next.js export served by the same application, so
