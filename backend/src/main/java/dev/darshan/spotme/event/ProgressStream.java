@@ -1,6 +1,8 @@
 package dev.darshan.spotme.event;
 
 import dev.darshan.spotme.common.ApiException;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -84,6 +86,19 @@ public class ProgressStream {
             }
             if (changed) {
                 lastSent.put(eventId, key);
+            }
+        }
+    }
+
+    /**
+     * Ends every open stream when the app stops. Otherwise graceful shutdown waits the full
+     * 30 seconds for streams that would stay open for up to 10 minutes.
+     */
+    @EventListener(ContextClosedEvent.class)
+    public void closeAll() {
+        for (List<SseEmitter> list : streams.values()) {
+            for (SseEmitter emitter : list) {
+                emitter.complete();
             }
         }
     }
