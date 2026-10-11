@@ -107,6 +107,7 @@ class AttendeeIntegrationTest extends IntegrationTest {
         String hidden = (String) api.upload(event, org, "behnken.jpg", Api.fixture("behnken.jpg")).getBody().get("id");
         drainJobs();
         api.post("/api/events/" + event + "/photos/" + hidden + "/hide", org, null);
+        assertThat(search(attendee)).hasSize(1);
 
         byte[] zip = RestClient.create("http://localhost:" + port).post().uri("/api/attendee/download")
                 .header("Authorization", "Bearer " + attendee).contentType(MediaType.APPLICATION_JSON)
