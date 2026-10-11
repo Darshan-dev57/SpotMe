@@ -38,6 +38,19 @@ public class MediaSigner {
                 + "&sig=" + sign(photoId, variant, subject, exp);
     }
 
+    /** How long a "download all" link works: enough to start the download, too short to be worth sharing. */
+    static final long ZIP_LINK_SECONDS = 120;
+
+    /** A link that downloads all of one guest's matches as one ZIP, which the browser saves straight to disk. */
+    public String zipLink(UUID membershipId) {
+        long exp = Instant.now().getEpochSecond() + ZIP_LINK_SECONDS;
+        return "/api/zip/" + membershipId + "?exp=" + exp + "&sig=" + sign(membershipId, "zip", "m:" + membershipId, exp);
+    }
+
+    public boolean verifyZip(UUID membershipId, long exp, String sig) {
+        return verify(membershipId, "zip", "m:" + membershipId, exp, sig);
+    }
+
     public boolean verify(UUID photoId, String variant, String subject, long exp, String sig) {
         if (sig == null || exp < Instant.now().getEpochSecond()) {
             return false;
