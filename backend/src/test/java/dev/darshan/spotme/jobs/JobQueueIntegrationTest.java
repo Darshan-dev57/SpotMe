@@ -39,6 +39,17 @@ class JobQueueIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void importJobsWaitBehindIndexingEvenWhenOlder() {
+        UUID file = UUID.randomUUID();
+        UUID photo = UUID.randomUUID();
+        queue.enqueue(JobKind.DRIVE_FILE, file, "drive-file:" + file, 3);
+        queue.enqueue(JobKind.INDEX_PHOTO, photo, "index:" + photo, 3);
+
+        assertThat(queue.claim("w", 1, Duration.ofMinutes(1))).extracting(Job::kind).containsExactly(JobKind.INDEX_PHOTO);
+        assertThat(queue.claim("w", 1, Duration.ofMinutes(1))).extracting(Job::kind).containsExactly(JobKind.DRIVE_FILE);
+    }
+
+    @Test
     void parallelWorkersNeverClaimTheSameJob() throws Exception {
         enqueue(200);
         Set<Long> claimed = ConcurrentHashMap.newKeySet();
