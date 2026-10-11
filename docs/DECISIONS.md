@@ -12,7 +12,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 4. [A job queue in a Postgres table](#4-a-job-queue-in-a-postgres-table)
 5. [Leases, claim tokens and a deletion epoch](#5-leases-claim-tokens-and-a-deletion-epoch)
 6. [OpenCV YuNet and SFace for faces](#6-opencv-yunet-and-sface-for-faces)
-7. [A match threshold of 0.55, and no "maybe" tier](#7-a-match-threshold-of-055-and-no-maybe-tier)
+7. [A match threshold of 0.51, and no "maybe" tier](#7-a-match-threshold-of-051-and-no-maybe-tier)
 8. [The selfie is never stored](#8-the-selfie-is-never-stored)
 9. [A personal invite link per guest](#9-a-personal-invite-link-per-guest)
 10. [Versioned notice and consent](#10-versioned-notice-and-consent)
@@ -127,17 +127,21 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   GPU becoming available. The `model_version` column on every face row allows a re-index with a new model
   side by side.
 
-## 7. A match threshold of 0.55, and no "maybe" tier
+## 7. A match threshold of 0.51, and no "maybe" tier
 
-- **Choice:** a photo is a match when one of its faces is within cosine distance 0.55 of the selfie.
-- **Why:** the threshold was picked on the tune half of an LFW evaluation event and then checked once on the
-  held-out test half (`eval/out/accuracy.json`). On the test half at 0.55: precision 0.9955 (220 correct
-  photos, 1 wrong), recall 0.8871, and none of the 25 people who were not in the event got any result.
-  A wrong match shows someone a private photo of a stranger, so precision is weighted above recall.
-- **Alternative considered and rejected:** a second "possible match" section for distances 0.55 to 0.60.
+- **Choice:** a photo is a match when one of its faces is within cosine distance 0.51 of the selfie.
+- **Why:** 0.55 was first picked on the tune half of a 438-photo LFW event and checked on the held-out test
+  half (`eval/out/accuracy.json`: precision 0.9955, recall 0.8871, none of 25 absent people matched). In the
+  11,251-photo scale test it let 17.6% of strangers see someone else's photo, because a big event has many
+  more look-alikes. At 0.51 that drops to 3.7% live, while people with 10 to 15 photos still get 94.4% of
+  them (`scale_person_051.json`). A wrong match shows someone a private photo of a stranger, so precision
+  is weighted above recall.
+- **Alternative considered and rejected:** 0.50, which found under 93% of the photos of people with 10 to 15
+  photos. A second "possible match" section for distances 0.55 to 0.60.
   On the test half that band adds 5 correct photos and 9 wrong ones, so most of what it shows is wrong.
-- **Tradeoff:** about one in nine of a guest's photos is not found (recall 0.8871 on the test half, lower on
-  real photos with harder poses). The guest can search again with a better selfie.
+- **Tradeoff:** some of a guest's photos are not found (in the scale test, 3,461 of 4,011 photos of the
+  143 people with 10 or more came back). A clear front-facing selfie finds the most; the guest can search
+  again with a better one.
 - **What would change it:** measurements on consented real event photos. LFW composites are cleaner than
   real crowds, so the numbers are an upper bound.
 

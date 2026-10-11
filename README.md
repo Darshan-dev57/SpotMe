@@ -102,7 +102,8 @@ Every number below comes from a JSON file in [`eval/out/`](eval/out); how each w
 
 | What | Result |
 |---|---|
-| Accuracy at threshold 0.55 (test split) | precision 0.9955, recall 0.8871; 0 of 25 people not in the event got a result |
+| Match threshold 0.51, live on an 11,251-photo event | people with 10 to 15 photos: 680 of their 720 photos found; strangers who got any photo: 10 of 272 (17.6% at the old 0.55) |
+| Accuracy at threshold 0.55 (small event, test split) | precision 0.9955, recall 0.8871; 0 of 25 people not in the event got a result |
 | Search latency (development machine, 174 searches) | p50 59.2 ms, p95 79.7 ms |
 | Indexing throughput (2 worker threads x 2 OpenCV threads) | 582.4 photos per minute |
 | Worker killed mid-batch | 438 of 438 photos ready, 0 duplicate faces, queue drained 60.4 s after restart |
@@ -197,7 +198,7 @@ scripts/        model and demo photo downloads
 | Photos indexed and searchable | One private link per guest | Reviewing a removal request |
 | <img src="docs/images/screens/guest-notice.jpg" width="220" alt="Guest notice"> | <img src="docs/images/screens/guest-results.jpg" width="220" alt="Guest results"> | <img src="docs/images/screens/guest-viewer.jpg" width="220" alt="Photo viewer"> |
 | The notice a guest agrees to | Photos the guest is probably in | Full-screen viewer |
-| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Choosing what to remove"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Demo sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
+| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Asking to be removed from solo photos"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Demo sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
 | Choosing what to remove | Sample selfies in the demo | Home page |
 | <img src="docs/images/screens/guest-notify.jpg" width="220" alt="Turning on new-photo alerts"> | <img src="docs/images/screens/guest-alerts.jpg" width="220" alt="New photos on the private alert link"> | |
 | Opting in to new-photo alerts | The private link with new photos | |

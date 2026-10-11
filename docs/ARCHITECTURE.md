@@ -99,7 +99,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 4. The selfie is decoded in memory and must contain exactly one clear face: none is refused, and a second face
    at least a quarter of the size of the largest is refused too, so the app never guesses whose photos to show.
 5. One SQL query compares the vector with every face in that event using pgvector's cosine distance operator
-   `<=>`, keeps photos whose closest face is within 0.55, and leaves out hidden, suppressed and
+   `<=>`, keeps photos whose closest face is within 0.51 (decision 7), and leaves out hidden, suppressed and
    reported-by-this-guest photos.
 6. The response lists photo ids with signed thumbnail and download links valid for 10 minutes, a flag when
    some photos are still being indexed, and a `Server-Timing` header with the decode, face and SQL times.
@@ -172,6 +172,7 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
 | What | Result | Source |
 |---|---|---|
 | Accuracy on the LFW test split at 0.55 | precision 0.9955, recall 0.8871, 0 of 25 absent people matched | `accuracy.json` |
+| Threshold 0.51, 11,251-photo event, live | 680 of 720 photos found for people with 10 to 15 photos; 10 of 272 strangers got a photo | `scale_person_051.json` |
 | Search latency, development machine | p50 59.2 ms, p95 79.7 ms (face step p50 30.1 ms, SQL p50 16.9 ms) | `latency.json` |
 | Indexing throughput, 2 x 2 threads | 582.4 photos per minute (438 photos, 807 faces) | `indexing.json` |
 | Crash in the middle of a batch | 438 of 438 photos ready, 0 duplicate faces, drained 60.4 s after restart | `indexing.json` |
