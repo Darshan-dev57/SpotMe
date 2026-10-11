@@ -14,8 +14,7 @@ const STATE: Record<RemovalRequest["status"], string> = {
 };
 
 /**
- * A guest asked to be removed. Solo photos are deleted when approved; with "erase", the guest is
- * also cut out of group photos, which stay hidden until the edited copy is in place.
+ * A guest asked to be removed. Their solo photos are deleted when approved; group photos stay.
  * Rejecting puts everything back. A lookalike selfie alone can never delete anything.
  */
 export function Removals({ eventId, token, onChanged }: { eventId: string; token: string; onChanged: () => void }) {
@@ -67,23 +66,17 @@ export function Removals({ eventId, token, onChanged }: { eventId: string; token
         <li key={r.id} className="rounded-xl border bg-card p-4 sm:p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-medium">
-              {r.requestedBy ?? "A guest"} asked to {r.mode === "erase" ? "be erased" : "be removed"}
+              {r.requestedBy ?? "A guest"} asked to be removed
             </p>
             <span className="text-sm text-muted-foreground">{formatDate(r.createdAt)}</span>
           </div>
           {r.note && <p className="mt-2 text-sm leading-relaxed">&ldquo;{r.note}&rdquo;</p>}
           {r.photos.length > 0 && <Thumbs label={`Delete ${plural(r.photos.length, "photo")}`} photos={r.photos} />}
-          {r.edits.length > 0 && (
-            <Thumbs
-              label={`Erase them from ${plural(r.edits.length, "group photo")}`}
-              photos={r.edits.map((e) => ({ id: e.photoId, thumbUrl: e.thumbUrl }))}
-            />
-          )}
           <p className="mt-3 text-sm text-muted-foreground">{STATE[r.status]}</p>
           {r.status === "received" && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="destructive" onClick={() => decide(r.id, "approve")}>
-                {r.edits.length > 0 ? "Approve" : "Delete permanently"}
+                Delete permanently
               </Button>
               <Button variant="outline" onClick={() => decide(r.id, "reject")}>
                 Keep the photos

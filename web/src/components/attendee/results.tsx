@@ -14,7 +14,6 @@ import {
   Match,
   Notice,
   RemovalCreated,
-  RemovalMode,
   SearchResult,
   api,
   apiBlob,
@@ -22,7 +21,7 @@ import {
   saveBlob,
 } from "@/lib/api";
 import { formatDate, plural } from "@/lib/format";
-import { photosLeft, splitPhotos } from "@/lib/removal";
+import { groupPhotos, splitPhotos } from "@/lib/removal";
 import { cn } from "@/lib/utils";
 
 type Mode = "browse" | "remove" | "removed";
@@ -45,7 +44,6 @@ export function Results({
   const [photos, setPhotos] = useState<Match[]>(result.photos);
   const [selected, setSelected] = useState<Set<string>>(new Set(result.photos.map((p) => p.id)));
   const [mode, setMode] = useState<Mode>("browse");
-  const [choice, setChoice] = useState<RemovalMode>("solo");
   const [sent, setSent] = useState<RemovalCreated | null>(null);
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -89,12 +87,11 @@ export function Results({
       const created = await api<RemovalCreated>("/api/attendee/removals", {
         token,
         json: {
-          mode: choice,
-          photos: photos.map((p) => ({ photoId: p.id, faceId: p.faceId })),
+          photoIds: photos.map((p) => p.id),
           note: form.get("note") || null,
         },
       });
-      const left = photosLeft(photos, choice);
+      const left = groupPhotos(photos);
       setPhotos(left);
       setSelected(new Set(left.map((p) => p.id)));
       setSent(created);
@@ -137,9 +134,7 @@ export function Results({
       {mode === "removed" && sent && (
         <p className="mt-4 rounded-lg bg-accent px-4 py-3 text-sm leading-relaxed" role="status">
           Sent.{" "}
-          {sent.hidden > 0 && `${plural(sent.hidden, "solo photo")} hidden now, deleted once the organizer confirms. `}
-          {sent.erasing > 0 &&
-            `You'll be erased from ${plural(sent.erasing, "group photo")}; they stay hidden until then.`}
+          {plural(sent.hidden, "solo photo")} hidden now, deleted once the organizer confirms.
         </p>
       )}
 
@@ -225,38 +220,17 @@ export function Results({
           ) : (
             <form action={requestRemoval} className="mt-6 grid max-w-xl gap-4 rounded-xl border bg-card p-5">
               <h2 className="font-medium">Remove me</h2>
-              <fieldset className="grid gap-2">
-                <legend className="sr-only">What should happen</legend>
-                <Choice
-                  value="solo"
-                  current={choice}
-                  onChange={setChoice}
-                  title="Only my solo photos"
-                  detail={
-                    counts.solo > 0
-                      ? `${plural(counts.solo, "photo")} where you're alone. Group photos stay.`
-                      : "You're not alone in any of these. Group photos stay."
-                  }
-                />
-                <Choice
-                  value="erase"
-                  current={choice}
-                  onChange={setChoice}
-                  disabled={!result.eraseAvailable}
-                  title="Erase me completely"
-                  detail={
-                    result.eraseAvailable
-                      ? `Also erases you from ${plural(counts.group, "group photo")}. The rest of the photo stays.`
-                      : "Not available yet."
-                  }
-                />
-              </fieldset>
+              <p className="text-sm">
+                {counts.solo > 0
+                  ? `Removes the ${plural(counts.solo, "photo")} where you're alone. Group photos stay.`
+                  : "You're not alone in any of these, so there is nothing to remove. Group photos stay."}
+              </p>
               <Field id="note" label="Note to the organizer (optional)">
                 <Textarea id="note" name="note" rows={2} maxLength={500} />
               </Field>
               <p className="text-sm text-muted-foreground">Hidden from everyone right away. The organizer confirms.</p>
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="destructive" disabled={busy || (choice === "solo" && counts.solo === 0)}>
+                <Button type="submit" variant="destructive" disabled={busy || counts.solo === 0}>
                   {busy && <Spinner />} Send request
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setMode("browse")}>
@@ -292,45 +266,6 @@ export function Results({
         <PhotoViewer photos={photos} index={viewing} onIndex={setViewing} onClose={() => setViewing(null)} />
       )}
     </section>
-  );
-}
-
-function Choice({
-  value,
-  current,
-  onChange,
-  title,
-  detail,
-  disabled = false,
-}: {
-  value: RemovalMode;
-  current: RemovalMode;
-  onChange: (m: RemovalMode) => void;
-  title: string;
-  detail: string;
-  disabled?: boolean;
-}) {
-  return (
-    <label
-      className={cn(
-        "flex cursor-pointer gap-3 rounded-lg border p-3 has-[:checked]:border-primary has-[:checked]:bg-accent",
-        disabled && "cursor-not-allowed opacity-60",
-      )}
-    >
-      <input
-        type="radio"
-        name="mode"
-        value={value}
-        checked={current === value}
-        onChange={() => onChange(value)}
-        disabled={disabled}
-        className="mt-1 accent-primary"
-      />
-      <span>
-        <span className="block font-medium">{title}</span>
-        <span className="block text-sm text-muted-foreground">{detail}</span>
-      </span>
-    </label>
   );
 }
 
