@@ -3,6 +3,7 @@ package dev.darshan.spotme.alerts;
 import dev.darshan.spotme.auth.AuthInterceptor;
 import dev.darshan.spotme.auth.Principal;
 import dev.darshan.spotme.common.ApiException;
+import dev.darshan.spotme.common.FaceSearchLimiter;
 import dev.darshan.spotme.common.RateLimiter;
 import dev.darshan.spotme.common.Tokens;
 import dev.darshan.spotme.config.SpotMeProperties;
@@ -42,9 +43,12 @@ public class AlertController {
     private final SearchService search;
     private final MediaSigner signer;
     private final SpotMeProperties props;
+    private final FaceSearchLimiter faceLimiter;
     private final RateLimiter<UUID> limiter;
 
-    public AlertController(JdbcTemplate jdbc, SearchService search, MediaSigner signer, SpotMeProperties props) {
+    public AlertController(JdbcTemplate jdbc, SearchService search, MediaSigner signer, SpotMeProperties props,
+                           FaceSearchLimiter faceLimiter) {
+        this.faceLimiter = faceLimiter;
         this.jdbc = jdbc;
         this.search = search;
         this.signer = signer;
@@ -58,7 +62,8 @@ public class AlertController {
     public Map<String, Object> create(HttpServletRequest http) throws IOException {
         Principal.Attendee me = AuthInterceptor.attendee(http);
         requireLiveEvent(me.eventId());
-        if (!limiter.tryAcquire(me.membershipId())) {
+        // opting in reads a selfie like a search does, so it spends from the same per-minute budget
+        if (!faceLimiter.tryAcquire(me.membershipId())) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "slow_down", "Too many tries. Wait a minute and try again.");
         }
         byte[] selfie = http.getInputStream().readNBytes((int) props.upload().maxBytes() + 1);
