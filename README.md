@@ -74,7 +74,7 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 - Full-screen viewer, single downloads or a ZIP of selected photos
 - Opt-in "notify me": a private link that shows new photos of you as the organizer adds them
 - "Not me" reports and consent withdrawal
-- Removal choice: only my solo photos, or erase me from group photos too (erasing is switched off for now)
+- "Remove me": deletes the photos where you are alone, after the organizer confirms; group photos stay
 
 **Engineering**
 - Durable job queue in PostgreSQL: leases, retries with backoff, idempotent indexing, crash recovery

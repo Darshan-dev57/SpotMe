@@ -2,7 +2,6 @@ package dev.darshan.spotme.jobs;
 
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.privacy.PurgeService;
-import dev.darshan.spotme.removal.ErasePersonHandler;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +28,6 @@ public class JobWorker {
     private final JobQueue queue;
     private final IndexPhotoHandler indexHandler;
     private final PurgeService purgeService;
-    private final ErasePersonHandler eraseHandler;
     private final JdbcTemplate jdbc;
     private final SpotMeProperties.Worker config;
     private final String workerId;
@@ -38,11 +36,10 @@ public class JobWorker {
     private final List<Thread> threads = new ArrayList<>();
 
     public JobWorker(JobQueue queue, IndexPhotoHandler indexHandler, PurgeService purgeService,
-                     ErasePersonHandler eraseHandler, JdbcTemplate jdbc, SpotMeProperties props) {
+                     JdbcTemplate jdbc, SpotMeProperties props) {
         this.queue = queue;
         this.indexHandler = indexHandler;
         this.purgeService = purgeService;
-        this.eraseHandler = eraseHandler;
         this.jdbc = jdbc;
         this.config = props.worker();
         // "pid@host" is enough to tell workers apart in the jobs table
@@ -124,7 +121,6 @@ public class JobWorker {
                     purgeService.purgeEvent(job);
                     yield "purged";
                 }
-                case ERASE_PERSON -> eraseHandler.handle(job);
             };
             done.incrementAndGet();
             jdbc.update("UPDATE worker_heartbeats SET last_seen = now(), jobs_done = jobs_done + 1 WHERE worker_id = ?", workerId);
@@ -141,9 +137,6 @@ public class JobWorker {
             String state = queue.fail(job, code, false);
             if ("failed".equals(state) && job.kind() == JobKind.INDEX_PHOTO) {
                 indexHandler.markFailed(job.targetId(), "processing_error");
-            }
-            if ("failed".equals(state) && job.kind() == JobKind.ERASE_PERSON) {
-                eraseHandler.markFailed(job.targetId());
             }
             log.warn("Job {} ({}) attempt {} failed: {}", job.id(), job.kind(), job.attempts(), code);
             return "retry";

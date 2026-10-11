@@ -37,8 +37,8 @@ public class SearchService {
     }
 
     /**
-     * One matching photo. faceId is the face in it that matched best (the one to erase if the guest
-     * asks), faceCount how many faces the photo has (1 means the guest is alone in it).
+     * One matching photo. faceId is the face in it that matched best, faceCount how many faces the
+     * photo has (1 means the guest is alone in it).
      */
     public record Match(UUID photoId, long faceId, double distance, int faceCount) {
 

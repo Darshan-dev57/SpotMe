@@ -50,8 +50,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
 | `faces` | box, detection score, `embedding vector(128)`, `model_version` | indexed on `(event_id, model_version)`; no face exists outside its event |
 | `jobs` | kind, target, dedupe key, state, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases |
-| `removal_requests` | the guest's choice (`solo` or `erase`), the solo photos to delete, note, decision | |
-| `photo_edits` | group photo, face box to erase, status | only for `erase`; the photo stays hidden while an edit is open |
+| `removal_requests` | the solo photos to delete, note, decision | |
 | `photo_alerts` | one guest's face vector, hash of the alert link token, `seen_until` | only after the guest opts in; deleted with the event, on withdrawal, revocation, a notice change or when turned off |
 | `wrong_match_reports` | guest + photo | hides that photo from that guest's results only |
 | `worker_heartbeats` | worker id, last seen, jobs done | drives the "worker active" badge on the organizer page |
@@ -110,13 +109,10 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 
 ![Removal flow](images/removal.png)
 
-- **Removal request:** the guest chooses *only my solo photos* or *erase me completely*. Photos where they are
-  the only face are suppressed for everyone at once; approval enqueues a `PURGE_PHOTO` job that deletes both
-  files and all face vectors and marks the row `purged`, keeping only the content hash so the same file cannot
-  be uploaded again. With *erase*, each group photo is suppressed too and gets a `photo_edits` row; approval
-  enqueues an `ERASE_PERSON` job that writes the edited copy, points the photo at it, deletes the erased face's
-  vector and lifts the suppression. Erasing is switched off for now (decision 21). Rejection lifts the
-  suppression unless another open request still covers the photo.
+- **Removal request:** photos where the guest is the only face are suppressed for everyone at once; group
+  photos stay (decision 21). Approval enqueues a `PURGE_PHOTO` job that deletes both files and all face vectors
+  and marks the row `purged`, keeping only the content hash so the same file cannot be uploaded again.
+  Rejection lifts the suppression unless another open request still covers the photo.
 - **Wrong match:** hides the photo from the reporting guest only and counts it for the organizer.
 - **New-photo alerts:** a guest who opts in after a search gets a private link; opening it searches the event
   for photos indexed after `seen_until` with the kept vector. Turning alerts off, withdrawing, revocation, a
@@ -196,8 +192,7 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
   RAM, so it relies on swap; photos are capped at 16 megapixels and 60 per event there.
 - **Alerts are pull, not push.** A guest who opts in sees new photos when they open their private link; nothing
   is sent to them.
-- **Erasing a guest from group photos is switched off.** Guests can remove their solo photos; the erase path is
-  built but waits for a model that fits the box (`docs/MEASUREMENTS.md`).
+- **Guests cannot be erased from group photos.** Removal takes only their solo photos (decision 21).
 - **JPEG and PNG only.** HEIC photos from iPhones must be converted first.
 - **Guests are not identity-checked.** A forwarded invite works for whoever holds it until the organizer
   revokes it. Matches are likely matches, not proof of identity.

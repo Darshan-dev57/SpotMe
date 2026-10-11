@@ -80,20 +80,17 @@ public class PurgeService {
         tx.executeWithoutResult(status -> {
             jdbc.update("DELETE FROM faces WHERE photo_id = ?", photoId);
             jdbc.update("DELETE FROM wrong_match_reports WHERE photo_id = ?", photoId);
-            // a deleted photo has nothing left to edit
-            jdbc.update("UPDATE photo_edits SET status = 'cancelled' WHERE photo_id = ? AND status IN ('waiting', 'queued')", photoId);
             // the row stays as a tombstone: its content hash blocks the same photo being uploaded again
             jdbc.update("""
                     UPDATE photos SET status = 'purged', object_key = NULL, thumb_key = NULL, face_count = 0,
                            width = NULL, height = NULL, byte_size = NULL, purged_at = now()
                     WHERE id = ?
                     """, photoId);
-            // a removal request is complete once every photo in it is purged and its edits are done
+            // a removal request is complete once every photo in it is purged
             jdbc.update("""
                     UPDATE removal_requests r SET status = 'completed', completed_at = now()
                     WHERE r.status = 'approved' AND ? = ANY (r.photo_ids)
                       AND NOT EXISTS (SELECT 1 FROM photos p WHERE p.id = ANY (r.photo_ids) AND p.status <> 'purged')
-                      AND NOT EXISTS (SELECT 1 FROM photo_edits e WHERE e.request_id = r.id AND e.status IN ('waiting', 'queued'))
                     """, photoId);
             if (!queue.complete(job)) {
                 throw new StaleClaimException(job.id());
