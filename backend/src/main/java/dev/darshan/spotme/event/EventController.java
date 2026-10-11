@@ -8,6 +8,7 @@ import dev.darshan.spotme.media.MediaSigner;
 import dev.darshan.spotme.privacy.PurgeService;
 import dev.darshan.spotme.removal.RemovalService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Future;
@@ -17,8 +18,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -67,10 +70,15 @@ public class EventController {
     private final RemovalService removals;
     private final MediaSigner signer;
     private final SpotMeProperties props;
+    private final EventProgress progress;
+    private final ProgressStream progressStream;
 
     public EventController(JdbcTemplate jdbc, EventAccess access, PurgeService purge, RemovalService removals,
-                           MediaSigner signer, SpotMeProperties props) {
+                           MediaSigner signer, SpotMeProperties props, EventProgress progress,
+                           ProgressStream progressStream) {
         this.jdbc = jdbc;
+        this.progress = progress;
+        this.progressStream = progressStream;
         this.access = access;
         this.purge = purge;
         this.removals = removals;
@@ -115,25 +123,33 @@ public class EventController {
                        consent_attested_at AS "consentAttestedAt"
                 FROM events WHERE id = ?
                 """, id);
-        Map<String, Object> counts = new LinkedHashMap<>();
-        for (String s : List.of("queued", "processing", "ready", "failed")) {
-            counts.put(s, 0L);
-        }
-        jdbc.query("SELECT status, count(*) FROM photos WHERE event_id = ? AND status <> 'purged' GROUP BY status",
-                rs -> {
-                    counts.put(rs.getString(1), rs.getLong(2));
-                }, id);
-        event.put("counts", counts);
-        event.put("faces", jdbc.queryForObject("SELECT count(*) FROM faces WHERE event_id = ?", Long.class, id));
+        event.putAll(progress.snapshot(id));
         event.put("publicPhotos", jdbc.queryForObject(
                 "SELECT count(*) FROM photos WHERE event_id = ? AND is_public AND status <> 'purged'", Long.class, id));
-        event.put("hidden", jdbc.queryForObject(
-                "SELECT count(*) FROM photos WHERE event_id = ? AND (hidden_at IS NOT NULL OR suppressed_at IS NOT NULL) AND status = 'ready'",
-                Long.class, id));
         event.put("pendingRemovals", jdbc.queryForObject(
                 "SELECT count(*) FROM removal_requests WHERE event_id = ? AND status IN ('received', 'approved')", Long.class, id));
-        event.put("worker", workerStatus());
         return event;
+    }
+
+    /**
+     * Live indexing progress as Server-Sent Events: the current counts at once, then every change.
+     * The page reads it with fetch (so the bearer token stays in a header) and polls
+     * {@link #progress} instead if the stream can't be opened.
+     */
+    @GetMapping(value = "/{id}/progress/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter progressStream(@PathVariable UUID id, HttpServletRequest http, HttpServletResponse response) {
+        access.requireOwner(id, http);
+        response.setHeader("Cache-Control", "no-cache");
+        // tells nginx-style proxies not to hold events back in a buffer
+        response.setHeader("X-Accel-Buffering", "no");
+        return progressStream.subscribe(id);
+    }
+
+    /** The same numbers as one JSON response, for the polling fallback. */
+    @GetMapping("/{id}/progress")
+    public Map<String, Object> progress(@PathVariable UUID id, HttpServletRequest http) {
+        access.requireOwner(id, http);
+        return progress.snapshot(id);
     }
 
     /**
@@ -328,16 +344,6 @@ public class EventController {
         access.requireOwner(id, http);
         removals.reject(id, requestId);
         return Map.of("status", "rejected");
-    }
-
-    private Map<String, Object> workerStatus() {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT max(last_seen) AS last_seen, bool_or(last_seen > now() - interval '30 seconds') AS active FROM worker_heartbeats");
-        Map<String, Object> out = new LinkedHashMap<>();
-        Object active = rows.get(0).get("active");
-        out.put("active", Boolean.TRUE.equals(active));
-        out.put("lastSeen", rows.get(0).get("last_seen"));
-        return out;
     }
 
 }

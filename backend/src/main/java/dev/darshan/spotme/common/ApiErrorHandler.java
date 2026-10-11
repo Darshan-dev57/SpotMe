@@ -14,6 +14,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -86,6 +87,12 @@ public class ApiErrorHandler {
         return body(HttpStatus.METHOD_NOT_ALLOWED, "method_not_allowed", "That method is not allowed here.");
     }
 
+    /** The browser closed a live stream or a download midway: there is nobody left to answer. */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void clientGone() {
+        // nothing to send
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> unexpected(Exception e) {
         // log the type and message only: request bodies may contain faces
@@ -93,7 +100,9 @@ public class ApiErrorHandler {
         return body(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error", "Something went wrong on our side.");
     }
 
+    // the content type is set here so errors are JSON even when the client asked for an event stream
     private static ResponseEntity<Map<String, String>> body(HttpStatus status, String code, String message) {
-        return ResponseEntity.status(status).body(Map.of("code", code, "message", message));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("code", code, "message", message));
     }
 }

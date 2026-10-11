@@ -1,5 +1,6 @@
 import { Counts } from "@/lib/api";
 import { plural } from "@/lib/format";
+import { ProgressMode } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,11 +11,14 @@ export function Pipeline({
   counts,
   hidden,
   worker,
+  live,
 }: {
   counts: Counts;
   /** ready photos that are hidden (a removal request or the organizer), so not searchable */
   hidden: number;
   worker: { active: boolean; lastSeen: string | null };
+  /** "live": numbers arrive over the event stream; "polling": refreshed every few seconds */
+  live?: ProgressMode;
 }) {
   const total = counts.ready + counts.processing + counts.queued + counts.failed;
   const parts = [
@@ -33,6 +37,11 @@ export function Pipeline({
           <span className="text-muted-foreground"> of {plural(total, "photo")} searchable</span>
           {hidden > 0 && <span className="text-muted-foreground"> · {hidden} hidden</span>}
         </p>
+        {live === "live" && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Counts update by themselves">
+            <span aria-hidden="true" className="size-1.5 animate-pulse rounded-full bg-ok" /> Live
+          </p>
+        )}
         {(working || !worker.active) && (
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <span
