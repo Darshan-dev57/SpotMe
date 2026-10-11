@@ -80,7 +80,16 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/auth/register" -
   -d "{\"email\":\"$EMAIL\",\"name\":\"Test organizer\",\"password\":\"$PASSWORD\"}")
 case "$code" in
   201|200) echo "created" ;;
-  409) echo "already there" ;;
+  409)
+    login=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/api/auth/login" -H 'Content-Type: application/json' \
+      -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+    if [ "$login" = "200" ]; then
+      echo "already there"
+    else
+      echo "$EMAIL already exists in this database with another password (from an earlier run)."
+      echo "Sign up a new account in the app, or start with an empty database: docker compose down -v"
+      PASSWORD="(not this run's password, see above)"
+    fi ;;
   *) echo "could not create it (HTTP $code), sign up in the app instead" ;;
 esac
 
