@@ -31,6 +31,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 23. [HEIC and AVIF are converted in the browser](#23-heic-and-avif-are-converted-in-the-browser)
 24. [Google Drive import without an API key](#24-google-drive-import-without-an-api-key)
 25. [Photos are private unless the organizer shares them](#25-photos-are-private-unless-the-organizer-shares-them)
+26. [The ZIP is streamed, not built](#26-the-zip-is-streamed-not-built)
 
 ---
 
@@ -363,3 +364,10 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Why:** private by default keeps the privacy promise for photos nobody chose to share, while photos with no
   clear faces (or a big crowd) would otherwise reach nobody.
 - **Tradeoff:** one boolean column, so there is no "shared with some guests" level.
+
+## 26. The ZIP is streamed, not built
+
+- **Choice:** `ZipOutputStream` writes straight to the response, one photo at a time, with no temp file; "Download
+  all" is a two-minute signed link the browser saves to disk itself. **Why:** a 200-photo ZIP is hundreds of MB,
+  which neither a 473 MB server nor a phone browser should hold in memory; the guest can only zip photos their
+  last search showed them (`guest_matches`) or public ones.

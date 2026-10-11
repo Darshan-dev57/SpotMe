@@ -54,6 +54,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | `jobs` | kind, target, dedupe key, state, priority, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases; Drive import jobs have priority 1, everything else 0 |
 | `drive_imports` | event, Drive folder id, status, files found, skipped, over the limit, error | one running import per event |
 | `drive_import_files` | one photo in an import: Drive file id, name, type, status, resulting photo, error | `UNIQUE (import_id, file_id)` |
+| `guest_matches` | photo ids the guest's last search returned (no selfie, no vector), replaced on every search | checks what a ZIP may contain |
 | `removal_requests` | the solo photos to delete, note, decision | |
 | `photo_alerts` | one guest's face vector, hash of the alert link token, `seen_until` | only after the guest opts in; deleted with the event, on withdrawal, revocation, a notice change or when turned off |
 | `wrong_match_reports` | guest + photo | hides that photo from that guest's results only |
@@ -116,6 +117,9 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
    The selfie bytes are dropped when the request ends.
 7. `GET /api/attendee/event-photos` pages through the photos the organizer marked public (60 at a time), with
    the same signed links. Private photos only ever come back through step 5.
+8. "Download all" asks `POST /api/attendee/download-link` for a two-minute signed link to `/api/zip/{membershipId}`,
+   which streams a ZIP of the photos in `guest_matches` that are still visible, one file at a time
+   (decision 26). Three ZIPs per guest per minute, two at once on the server.
 
 ## Flow 4: removal, withdrawal and expiry
 
