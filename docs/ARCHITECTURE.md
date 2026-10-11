@@ -49,7 +49,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | `events` | title, purpose notice + version, status, expiry, `deletion_epoch`, `demo` | status: `draft`, `published`, `deleting`, `purged`; expiry at most 90 days out |
 | `memberships` | one row per invited guest: label, hash of the invite token, consent version, withdrawal, revocation | the invite token itself is never stored |
 | `sessions` | hash of a bearer token, organizer or membership, expiry | exactly one of the two owners is set (a `CHECK` constraint) |
-| `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
+| `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, `is_public`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
 | `faces` | box, detection score, `embedding vector(128)`, `model_version` | indexed on `(event_id, model_version)`; no face exists outside its event |
 | `jobs` | kind, target, dedupe key, state, priority, attempts, `run_after`, `lease_until`, `claim_token` | partial indexes for claiming and for expired leases; Drive import jobs have priority 1, everything else 0 |
 | `drive_imports` | event, Drive folder id, status, files found, skipped, over the limit, error | one running import per event |
@@ -114,6 +114,8 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 6. The response lists photo ids with signed thumbnail and download links valid for 10 minutes, a flag when
    some photos are still being indexed, and a `Server-Timing` header with the decode, face and SQL times.
    The selfie bytes are dropped when the request ends.
+7. `GET /api/attendee/event-photos` pages through the photos the organizer marked public (60 at a time), with
+   the same signed links. Private photos only ever come back through step 5.
 
 ## Flow 4: removal, withdrawal and expiry
 
