@@ -12,7 +12,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,6 +52,14 @@ public class EventController {
 
     public record NoticeRequest(@NotBlank @Size(max = 1000) String purposeNotice) {
     }
+
+    /** "public": every guest with a link sees the photo. "private": only guests whose face matches. */
+    public record VisibilityRequest(@NotEmpty @Size(max = MAX_VISIBILITY_BATCH) List<@NotNull UUID> photoIds,
+                                    @NotNull @Pattern(regexp = "public|private") String visibility) {
+    }
+
+    /** Most photos one visibility change can touch. */
+    static final int MAX_VISIBILITY_BATCH = 2000;
 
     private final JdbcTemplate jdbc;
     private final EventAccess access;
@@ -115,6 +125,8 @@ public class EventController {
                 }, id);
         event.put("counts", counts);
         event.put("faces", jdbc.queryForObject("SELECT count(*) FROM faces WHERE event_id = ?", Long.class, id));
+        event.put("publicPhotos", jdbc.queryForObject(
+                "SELECT count(*) FROM photos WHERE event_id = ? AND is_public AND status <> 'purged'", Long.class, id));
         event.put("hidden", jdbc.queryForObject(
                 "SELECT count(*) FROM photos WHERE event_id = ? AND (hidden_at IS NOT NULL OR suppressed_at IS NOT NULL) AND status = 'ready'",
                 Long.class, id));
@@ -174,6 +186,7 @@ public class EventController {
         List<Map<String, Object>> rows = jdbc.queryForList("""
                 SELECT p.id, p.status, p.face_count AS "faceCount", p.error_code AS "errorCode", p.width, p.height,
                        p.hidden_at IS NOT NULL AS hidden, p.suppressed_at IS NOT NULL AS suppressed,
+                       p.is_public AS "public",
                        (SELECT count(*) FROM wrong_match_reports r WHERE r.photo_id = p.id) AS "wrongMatchReports",
                        p.created_at AS "createdAt"
                 FROM photos p
@@ -187,6 +200,20 @@ public class EventController {
             }
         }
         return rows;
+    }
+
+    /**
+     * Marks many photos public or private in one statement. Only photos of this event are touched,
+     * so ids from another event are ignored rather than changed.
+     */
+    @PostMapping("/{id}/photos/visibility")
+    public Map<String, Object> setVisibility(@PathVariable UUID id, @Valid @RequestBody VisibilityRequest req,
+                                             HttpServletRequest http) {
+        access.requireOwner(id, http);
+        boolean makePublic = req.visibility().equals("public");
+        int updated = jdbc.update("UPDATE photos SET is_public = ? WHERE event_id = ? AND id = ANY (?) AND status <> 'purged'",
+                makePublic, id, req.photoIds().stream().distinct().toArray(UUID[]::new));
+        return Map.of("updated", updated, "visibility", req.visibility());
     }
 
     @PostMapping("/{id}/photos/{photoId}/hide")
