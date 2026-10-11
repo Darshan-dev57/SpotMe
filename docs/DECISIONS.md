@@ -30,6 +30,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
 23. [HEIC and AVIF are converted in the browser](#23-heic-and-avif-are-converted-in-the-browser)
 24. [Google Drive import without an API key](#24-google-drive-import-without-an-api-key)
+25. [Photos are private unless the organizer shares them](#25-photos-are-private-unless-the-organizer-shares-them)
 
 ---
 
@@ -353,3 +354,12 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   imported. The HTTP client is locked to Google's hosts so a pasted link can't be used to reach anything else.
 - **What would change it:** Google changing or blocking the page, or organizers needing private folders; then
   the Drive API with Google sign-in would replace the listing step and keep the rest.
+
+## 25. Photos are private unless the organizer shares them
+
+- **Choice:** every photo starts private and is shown only to guests whose face matches. The organizer can mark
+  photos public in bulk (venue, stage, crowd shots); every guest with a link sees those in a separate "Event
+  photos" section. Public photos are still indexed, so they also appear in a guest's own matches.
+- **Why:** private by default keeps the privacy promise for photos nobody chose to share, while photos with no
+  clear faces (or a big crowd) would otherwise reach nobody.
+- **Tradeoff:** one boolean column, so there is no "shared with some guests" level.
