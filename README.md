@@ -235,7 +235,7 @@ query, pool size and memory limits were tuned on the hosted box. Details in
 
 **Guests**
 - Consent to a versioned notice before searching
-- One selfie (camera or gallery), results in under a second
+- One selfie: the phone's front camera, a live webcam preview on laptops, or a gallery photo; results in under a second
 - Their own matches, plus an "Event photos" section with the photos the organizer shared with everyone
 - Full-screen viewer, single downloads, or all their photos as one ZIP streamed by the server
 - Opt-in "notify me": a private link that shows new photos of you as the organizer adds them
