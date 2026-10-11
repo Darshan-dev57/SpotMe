@@ -3,9 +3,12 @@ package dev.darshan.spotme.jobs;
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.drive.DriveImportHandler;
 import dev.darshan.spotme.privacy.PurgeService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,6 +34,7 @@ public class JobWorker {
     private final PurgeService purgeService;
     private final DriveImportHandler driveHandler;
     private final JdbcTemplate jdbc;
+    private final MeterRegistry metrics;
     private final SpotMeProperties.Worker config;
     private final String workerId;
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -38,12 +42,14 @@ public class JobWorker {
     private final List<Thread> threads = new ArrayList<>();
 
     public JobWorker(JobQueue queue, IndexPhotoHandler indexHandler, PurgeService purgeService,
-                     DriveImportHandler driveHandler, JdbcTemplate jdbc, SpotMeProperties props) {
+                     DriveImportHandler driveHandler, JdbcTemplate jdbc, SpotMeProperties props,
+                     MeterRegistry metrics) {
         this.queue = queue;
         this.indexHandler = indexHandler;
         this.purgeService = purgeService;
         this.driveHandler = driveHandler;
         this.jdbc = jdbc;
+        this.metrics = metrics;
         this.config = props.worker();
         // "pid@host" is enough to tell workers apart in the jobs table
         this.workerId = ManagementFactory.getRuntimeMXBean().getName();
@@ -74,7 +80,10 @@ public class JobWorker {
 
     @PreDestroy
     public synchronized void stop() {
-        running.set(false);
+        if (!running.getAndSet(false)) {
+            return;
+        }
+        log.info("Worker {} stopping, {} jobs done", workerId, done.get());
         for (Thread t : threads) {
             t.interrupt();
         }
@@ -86,6 +95,7 @@ public class JobWorker {
             }
         }
         threads.clear();
+        log.info("Worker {} stopped", workerId);
     }
 
     public boolean isRunning() {
@@ -111,8 +121,27 @@ public class JobWorker {
         }
     }
 
-    /** Runs one claimed job and records success or failure. Public so tests can drive it step by step. */
+    /**
+     * Runs one claimed job, records success or failure and counts the outcome.
+     * Public so tests can drive it step by step.
+     */
     public String runOne(Job job) {
+        MDC.put("jobId", "job-" + job.id());
+        Timer.Sample timer = Timer.start(metrics);
+        String outcome = "error";
+        try {
+            outcome = execute(job);
+            return outcome;
+        } finally {
+            String kind = job.kind().name();
+            timer.stop(metrics.timer("spotme.jobs.duration", "kind", kind));
+            metrics.counter("spotme.jobs.finished", "kind", kind, "outcome", outcome).increment();
+            MDC.remove("jobId");
+        }
+    }
+
+    // returns a fixed word (indexed, skipped, purged, listed, failed, retry, stale ...), used as a metric tag
+    private String execute(Job job) {
         try {
             String outcome = switch (job.kind()) {
                 case INDEX_PHOTO -> indexHandler.handle(job);
@@ -134,6 +163,7 @@ public class JobWorker {
             log.info("Job {} was taken over by another worker, result dropped", job.id());
             return "stale";
         } catch (IndexPhotoHandler.PermanentFailure e) {
+            log.warn("Job {} ({}) failed for good: {}", job.id(), job.kind(), e.getMessage());
             queue.fail(job, e.getMessage(), true);
             indexHandler.markFailed(job.targetId(), e.getMessage());
             return "failed";
@@ -150,7 +180,7 @@ public class JobWorker {
                 }
             }
             log.warn("Job {} ({}) attempt {} failed: {}", job.id(), job.kind(), job.attempts(), code);
-            return "retry";
+            return "failed".equals(state) ? "failed" : "retry";
         }
     }
 
