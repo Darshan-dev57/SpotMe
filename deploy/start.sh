@@ -105,8 +105,8 @@ export SPOTME_STORAGE_DIR="$DATA_DIR/storage"
 export SPOTME_MODELS_DIR="$RUNTIME_DIR/models"
 export SPOTME_WEB_DIR="$APP_DIR/web"
 export SPOTME_WEB_ORIGIN="${SPOTME_WEB_ORIGIN:-https://spotme.sites.tab.bot}"
-export SPOTME_DEMO_ENABLED=true
-export SPOTME_DEMO_PHOTOSDIR="$APP_DIR/demo-photos"
+export SPOTME_SAMPLE_ENABLED=true
+export SPOTME_SAMPLE_PHOTOSDIR="$APP_DIR/sample-photos"
 # one face engine, one worker thread and one decode at a time: memory over speed
 export SPOTME_FACE_ENGINES=1
 export SPOTME_FACE_OPENCVTHREADS=2

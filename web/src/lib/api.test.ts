@@ -32,13 +32,13 @@ describe("api", () => {
 
   it("keeps a generic message when the error body is not JSON", async () => {
     mockFetch(new Response("<html>Bad gateway</html>", { status: 502 }));
-    const err = await api("/api/demo").catch((e) => e);
+    const err = await api("/api/sample").catch((e) => e);
     expect(err).toMatchObject({ status: 502, code: "error", message: "Request failed (502)." });
   });
 
   it("reports a network failure as offline", async () => {
     mockFetch(new TypeError("Failed to fetch"));
-    const err = await api("/api/demo").catch((e) => e);
+    const err = await api("/api/sample").catch((e) => e);
     expect(err).toMatchObject({ status: 0, code: "offline" });
   });
 

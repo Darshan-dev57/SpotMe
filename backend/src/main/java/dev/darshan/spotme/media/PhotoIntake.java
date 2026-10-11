@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Takes in one photo for an event: dedupe, clean, store the files, then the photo row and its
- * indexing job in one transaction. Used by the upload endpoint and by the demo seeder.
+ * indexing job in one transaction. Used by the upload endpoint and by the sample event seeder.
  */
 @Service
 public class PhotoIntake {

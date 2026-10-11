@@ -1,4 +1,4 @@
-package dev.darshan.spotme.demo;
+package dev.darshan.spotme.sample;
 
 import dev.darshan.spotme.jobs.JobKind;
 import dev.darshan.spotme.support.Api;
@@ -19,43 +19,43 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class DemoIntegrationTest extends IntegrationTest {
+class SampleEventIntegrationTest extends IntegrationTest {
 
-    static final Path PHOTOS = demoPhotos();
+    static final Path PHOTOS = samplePhotos();
 
     @DynamicPropertySource
-    static void demo(DynamicPropertyRegistry registry) {
-        registry.add("spotme.demo.enabled", () -> "true");
-        registry.add("spotme.demo.photos-dir", PHOTOS::toString);
-        registry.add("spotme.demo.invites-per-minute", () -> "3");
+    static void sample(DynamicPropertyRegistry registry) {
+        registry.add("spotme.sample.enabled", () -> "true");
+        registry.add("spotme.sample.photos-dir", PHOTOS::toString);
+        registry.add("spotme.sample.invites-per-minute", () -> "3");
     }
 
     @Autowired
-    DemoService demo;
+    SampleEventService sample;
 
     @Test
-    void startupCreatesOnePublishedDemoEventWithThePhotos() {
-        demo.ensureDemoEvent(); // already ran at startup: a second run must not make another event
-        assertThat(count("SELECT count(*) FROM events WHERE demo AND status = 'published'")).isEqualTo(1);
-        var summary = api.get("/api/demo", null);
+    void startupCreatesOnePublishedSampleEventWithThePhotos() {
+        sample.ensureSampleEvent(); // already ran at startup: a second run must not make another event
+        assertThat(count("SELECT count(*) FROM events WHERE sample AND status = 'published'")).isEqualTo(1);
+        var summary = api.get("/api/sample", null);
         assertThat(summary.getStatusCode().value()).isEqualTo(200);
         assertThat(summary.getBody()).containsEntry("photoCount", 2);
     }
 
     @Test
     void aVisitorJoinsWithTheirOwnInviteAndFindsTheGroupPhoto() {
-        // each test starts with an empty job table, so queue the demo photos again and index them
+        // each test starts with an empty job table, so queue the sample photos again and index them
         for (UUID id : jdbc.queryForList(
-                "SELECT p.id FROM photos p JOIN events e ON e.id = p.event_id WHERE e.demo AND p.status = 'queued'", UUID.class)) {
+                "SELECT p.id FROM photos p JOIN events e ON e.id = p.event_id WHERE e.sample AND p.status = 'queued'", UUID.class)) {
             queue.enqueue(JobKind.INDEX_PHOTO, id, "index:" + id, 5);
         }
         drainJobs();
-        var invite = api.post("/api/demo/invite", null, null);
+        var invite = api.post("/api/sample/invite", null, null);
         assertThat(invite.getStatusCode().value()).isEqualTo(201);
         String token = (String) invite.getBody().get("token");
 
         var notice = api.get("/api/join/" + token, null).getBody();
-        assertThat(notice).containsEntry("demo", true).containsEntry("published", true);
+        assertThat(notice).containsEntry("sample", true).containsEntry("published", true);
 
         var consent = api.post("/api/join/" + token + "/consent", null, Map.of("noticeVersion", 1, "agree", true));
         String session = (String) consent.getBody().get("sessionToken");
@@ -65,14 +65,14 @@ class DemoIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void demoInvitesAreRateLimitedPerAddress() {
+    void visitorInvitesAreRateLimitedPerAddress() {
         // a made-up visitor address, so this test has its own limit
         var http = RestClient.builder().baseUrl("http://localhost:" + port)
                 .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
         int created = 0;
         int limited = 0;
         for (int i = 0; i < 6; i++) {
-            int status = http.post().uri("/api/demo/invite").header("X-Forwarded-For", "203.0.113.7")
+            int status = http.post().uri("/api/sample/invite").header("X-Forwarded-For", "203.0.113.7")
                     .retrieve().toBodilessEntity().getStatusCode().value();
             if (status == 201) {
                 created++;
@@ -91,7 +91,7 @@ class DemoIntegrationTest extends IntegrationTest {
                 .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
         int limited = 0;
         for (int i = 0; i < 6; i++) {
-            int status = http.post().uri("/api/demo/invite")
+            int status = http.post().uri("/api/sample/invite")
                     .header("X-Forwarded-For", "198.18.0." + (i + 1) + ", 198.51.100.23")
                     .retrieve().toBodilessEntity().getStatusCode().value();
             if (status == 429) {
@@ -102,15 +102,15 @@ class DemoIntegrationTest extends IntegrationTest {
     }
 
     @Test
-    void theDemoOrganizerCannotSignIn() {
-        var res = api.post("/api/auth/login", null, Map.of("email", DemoService.ORGANIZER_EMAIL, "password", "password123"));
+    void theSampleOrganizerCannotSignIn() {
+        var res = api.post("/api/auth/login", null, Map.of("email", SampleEventService.ORGANIZER_EMAIL, "password", "password123"));
         assertThat(res.getStatusCode().value()).isEqualTo(401);
     }
 
     /** The group photo (Hurley is in it) and a portrait of someone else. */
-    private static Path demoPhotos() {
+    private static Path samplePhotos() {
         try {
-            Path dir = Files.createTempDirectory("spotme-demo");
+            Path dir = Files.createTempDirectory("spotme-sample");
             Files.write(dir.resolve("01.jpg"), Api.fixture("crew-group.jpg"));
             Files.write(dir.resolve("02.jpg"), Api.fixture("glover.jpg"));
             Files.writeString(dir.resolve("notes.txt"), "not a photo, ignored");
