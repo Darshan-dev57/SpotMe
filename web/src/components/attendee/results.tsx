@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Bell, Check, Copy, Download, Expand, Flag, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { EventPhotos } from "@/components/attendee/event-photos";
 import { PhotoViewer } from "@/components/attendee/photo-viewer";
 import { Field } from "@/components/field";
 import { Button } from "@/components/ui/button";
@@ -241,6 +242,8 @@ export function Results({
           )}
         </>
       )}
+
+      {mode !== "remove" && <EventPhotos token={token} matchedIds={photos.map((p) => p.id)} />}
 
       {mode !== "remove" && <NotifyMe token={token} selfie={selfie} until={notice.expiresAt} />}
 
