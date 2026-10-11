@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Camera, ImageUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError, Notice, SearchResult, api } from "@/lib/api";
+import { LiveCamera } from "@/components/attendee/live-camera";
+import { detectCameraMode } from "@/lib/camera";
 import { shrinkImage } from "@/lib/image";
 
 /** Sample "selfies" for the public demo: official NASA portraits that are not in the album itself. */
@@ -31,6 +33,19 @@ export function SelfieStep({
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [live, setLive] = useState(false);
+
+  // phones open their camera app through the file input; laptops get a preview in the page
+  function openCamera() {
+    setError(null);
+    if (detectCameraMode() === "live") setLive(true);
+    else camera.current?.click();
+  }
+
+  const closeCamera = useCallback((message?: string) => {
+    setLive(false);
+    if (message) setError(message);
+  }, []);
 
   async function trySample(src: string) {
     const blob = await (await fetch(src)).blob();
@@ -99,16 +114,25 @@ export function SelfieStep({
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 sm:grid-cols-[14rem_1fr] sm:items-center">
-        <div className="relative mx-auto aspect-[3/4] w-48 overflow-hidden rounded-2xl bg-muted sm:mx-0 sm:w-56">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Your selfie" className={busy ? "h-full w-full object-cover opacity-70" : "h-full w-full object-cover"} />
-          ) : (
-            <svg viewBox="0 0 120 160" className="h-full w-full text-input" aria-hidden="true">
-              <ellipse cx="60" cy="68" rx="30" ry="38" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
-              <path d="M20 150c6-26 22-38 40-38s34 12 40 38" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
-            </svg>
+      {live ? (
+        <LiveCamera
+          onPhoto={(file) => {
+            setLive(false);
+            search(file);
+          }}
+          onCancel={closeCamera}
+        />
+      ) : (
+        <div className="mt-6 grid gap-6 sm:grid-cols-[14rem_1fr] sm:items-center">
+          <div className="relative mx-auto aspect-[3/4] w-48 overflow-hidden rounded-2xl bg-muted sm:mx-0 sm:w-56">
+            {preview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="Your selfie" className={busy ? "h-full w-full object-cover opacity-70" : "h-full w-full object-cover"} />
+            ) : (
+              <svg viewBox="0 0 120 160" className="h-full w-full text-input" aria-hidden="true">
+                <ellipse cx="60" cy="68" rx="30" ry="38" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
+                <path d="M20 150c6-26 22-38 40-38s34 12 40 38" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
+              </svg>
           )}
           {busy && (
             <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-foreground/70 to-transparent p-4">
@@ -125,7 +149,7 @@ export function SelfieStep({
               {error}
             </p>
           )}
-          <Button size="lg" onClick={() => camera.current?.click()} disabled={busy}>
+          <Button size="lg" onClick={openCamera} disabled={busy}>
             <Camera /> {preview ? "Take another" : "Open camera"}
           </Button>
           <Button size="lg" variant="outline" onClick={() => library.current?.click()} disabled={busy}>
@@ -134,6 +158,7 @@ export function SelfieStep({
           <p className="text-sm text-muted-foreground">Used for this search only, then deleted.</p>
         </div>
       </div>
+      )}
 
       <input ref={camera} type="file" accept="image/*" capture="user" hidden onChange={(e) => search(e.target.files?.[0])} />
       <input ref={library} type="file" accept="image/*,.heic,.heif" hidden onChange={(e) => search(e.target.files?.[0])} />
