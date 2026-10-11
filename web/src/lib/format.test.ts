@@ -28,7 +28,7 @@ describe("daysLeft", () => {
 describe("photoError", () => {
   it("turns API codes into plain words", () => {
     expect(photoError("corrupt_image")).toBe("File is damaged");
-    expect(photoError("unsupported_type")).toBe("Not a JPEG or PNG");
+    expect(photoError("unsupported_type")).toBe("Not a supported photo type");
   });
 
   it("has a fallback for codes it does not know", () => {

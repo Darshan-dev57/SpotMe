@@ -60,9 +60,12 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 1. The web page sends each file as its own request, 4 at a time, so one bad file never fails a batch.
 2. `PhotoIntake` hashes the bytes. A file already in the event returns `duplicate`; a file that was removed on
    request is refused (`removed_photo`). An event holds at most `spotme.upload.max-photos-per-event` photos.
-3. `ImageProcessor` reads the real type from the first bytes (JPEG or PNG), reads only the header to check the
-   pixel count against `spotme.upload.max-pixels`, then decodes (at most `max-concurrent-decodes` at a time),
-   re-encodes to JPEG, which drops EXIF data such as GPS position, and makes a 480 px thumbnail.
+3. `ImageProcessor` reads the real type from the first bytes (JPEG, PNG, WebP, TIFF, BMP or GIF), reads only
+   the header to check the pixel count against `spotme.upload.max-pixels`, then decodes (at most
+   `max-concurrent-decodes` at a time; OpenCV for most formats, Java's ImageIO for the first frame of a GIF),
+   re-encodes to JPEG, which drops EXIF data such as GPS position, and makes a 480 px thumbnail. HEIC/HEIF and
+   AVIF photos are turned into JPEG by the web page before upload; sent straight to the API they get a clear
+   `unsupported_type` message. A photo over the pixel cap is sent again by the page as a 4000 px copy.
 4. Both files are written under keys built from generated ids. Then one transaction inserts the photo row
    (`queued`) and its `INDEX_PHOTO` job. If the transaction fails, the files are deleted; if the process dies
    in between, the orphan sweeper deletes them after 15 minutes.
@@ -194,6 +197,8 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
 - **Alerts are pull, not push.** A guest who opts in sees new photos when they open their private link; nothing
   is sent to them.
 - **Guests cannot be erased from group photos.** Removal takes only their solo photos (decision 21).
-- **JPEG and PNG only.** HEIC photos from iPhones must be converted first.
+- **HEIC and AVIF need the web page.** The server has no decoder for them, so the browser converts them; a
+  browser without a HEIC or AVIF decoder shows a message asking for JPEG. Animated WebP is refused and an
+  animated GIF keeps only its first frame.
 - **Guests are not identity-checked.** A forwarded invite works for whoever holds it until the organizer
   revokes it. Matches are likely matches, not proof of identity.

@@ -16,7 +16,7 @@ export function photoError(code: string | null): string {
     case "corrupt_image":
       return "File is damaged";
     case "unsupported_type":
-      return "Not a JPEG or PNG";
+      return "Not a supported photo type";
     case "too_many_pixels":
       return "Too many pixels";
     case "file_missing":

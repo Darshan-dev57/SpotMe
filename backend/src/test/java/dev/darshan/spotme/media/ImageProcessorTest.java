@@ -84,6 +84,64 @@ class ImageProcessorTest {
         assertThat(ImageProcessor.sniffType(out.toByteArray())).isEqualTo("image/png");
     }
 
+    @Test
+    void readsWebpTiffBmpAndGifAndStoresAJpeg() throws IOException {
+        for (String format : new String[]{"webp", "tiff", "bmp", "gif"}) {
+            byte[] file = FormatSamples.encode(FormatSamples.testPattern(320, 200), format);
+            ImageProcessor.CleanImage clean;
+            try {
+                clean = processor.clean(file, true);
+            } catch (ImageProcessor.RejectedImageException e) {
+                throw new AssertionError(format + " was rejected: " + e.code(), e);
+            }
+            assertThat(ImageProcessor.sniffType(clean.jpeg())).as(format).isEqualTo("image/jpeg");
+            assertThat(clean.width()).as(format).isEqualTo(320);
+            assertThat(clean.height()).as(format).isEqualTo(200);
+        }
+    }
+
+    @Test
+    void sniffsEveryFormatFromItsFirstBytes() throws IOException {
+        BufferedImage img = FormatSamples.testPattern(40, 30);
+        assertThat(ImageProcessor.sniffType(FormatSamples.encode(img, "webp"))).isEqualTo("image/webp");
+        assertThat(ImageProcessor.sniffType(FormatSamples.encode(img, "tiff"))).isEqualTo("image/tiff");
+        assertThat(ImageProcessor.sniffType(FormatSamples.encode(img, "bmp"))).isEqualTo("image/bmp");
+        assertThat(ImageProcessor.sniffType(FormatSamples.encode(img, "gif"))).isEqualTo("image/gif");
+        assertThat(ImageProcessor.sniffType(FormatSamples.ftyp("heic", "mif1", "heic"))).isEqualTo("image/heic");
+        assertThat(ImageProcessor.sniffType(FormatSamples.ftyp("mif1", "mif1", "avif"))).isEqualTo("image/avif");
+        // an MP4 video also starts with an ftyp box, but is not a photo
+        assertThat(ImageProcessor.sniffType(FormatSamples.ftyp("isom", "isom", "mp42"))).isNull();
+    }
+
+    @Test
+    void heicAndAvifGetAMessageThatSaysWhatToDo() {
+        assertThatThrownBy(() -> processor.clean(FormatSamples.ftyp("heic", "mif1", "heic"), true))
+                .hasFieldOrPropertyWithValue("code", "unsupported_type")
+                .hasMessageContaining("converted to JPEG by the SpotMe page");
+    }
+
+    @Test
+    void webpSizeIsReadFromTheHeaderBeforeDecoding() throws IOException {
+        byte[] webp = FormatSamples.encode(FormatSamples.testPattern(300, 120), "webp");
+        assertThat(WebpHeader.size(webp)).containsExactly(300, 120);
+        ImageProcessor strict = new ImageProcessor(props(10_000));
+        assertThatThrownBy(() -> strict.clean(webp, true)).hasFieldOrPropertyWithValue("code", "too_many_pixels");
+    }
+
+    @Test
+    void gifUsesTheFirstFrame() throws IOException {
+        BufferedImage red = new BufferedImage(60, 40, BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = red.createGraphics();
+        g.setColor(java.awt.Color.RED);
+        g.fillRect(0, 0, 60, 40);
+        g.dispose();
+        org.opencv.core.Mat mat = ImageProcessor.decodeGifFirstFrame(FormatSamples.encode(red, "gif"));
+        double[] pixel = mat.get(20, 30); // BGR
+        assertThat(pixel[2]).isGreaterThan(200);
+        assertThat(pixel[0]).isLessThan(50);
+        mat.release();
+    }
+
     static byte[] jpeg(int w, int h) throws IOException {
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         for (int x = 0; x < w; x += 10) {
