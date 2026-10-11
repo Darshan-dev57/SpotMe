@@ -109,10 +109,10 @@ steps 5 to 14 done in a real browser (Chromium at phone size) by a Playwright sc
 | 10. Give consent | pass | notice read, *I agree* gives a session |
 | 11. Search with a selfie | pass | Hurley's selfie finds his 2 photos (group + solo) |
 | 12. Download matching photos | pass | ZIP with exactly those 2 photos |
-| 13. Request removal | pass | solo photo gone from the guest's results at once; organizer approved on the Removals tab |
-| 13. Withdraw consent | pass | *Withdraw consent* shows "You have left this event" |
-| 14. Data is really deleted | pass | photo row `purged`, 0 face vectors, 0 files (original and thumbnail) for it on disk, 0 guest sessions, membership marked withdrawn |
-| 14. Old links stop working | pass | a photo link handed out before answers HTTP 403 |
+| 13a. Request removal | pass | solo photo gone from the guest's results at once; organizer approved on the Removals tab |
+| 13b. Withdraw consent | pass | *Withdraw consent* shows "You have left this event" |
+| 14a. Data is really deleted | pass | photo row `purged`, 0 face vectors, 0 files (original and thumbnail) for it on disk, 0 guest sessions, membership marked withdrawn |
+| 14b. Old links stop working | pass | a photo link handed out before answers HTTP 403 |
 
 `./scripts/start.sh` was then run in another fresh clone: every step passed, the test account could sign in,
 the sample event indexed all 36 photos and the sample Behnken selfie found 15 photos.
