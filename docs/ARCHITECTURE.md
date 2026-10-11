@@ -26,12 +26,13 @@ export that the same application serves, so in production a single process answe
 |---|---|
 | `auth` | Organizer accounts (BCrypt), opaque bearer sessions stored as SHA-256 hashes, the interceptor that decides which token may call which path |
 | `event` | Events, the purpose notice, publishing, invites, review (hide / unhide), removal decisions |
-| `media` | `PhotoIntake` (validate, re-encode, thumbnail, store, enqueue), `ImageProcessor`, `PhotoStorage`, signed media links |
+| `media` | `PhotoIntake` (validate, re-encode, thumbnail, store, enqueue), `ImageProcessor` (six formats decoded on the server), `PhotoStorage`, signed media links |
 | `jobs` | The Postgres job queue, the worker loop, the indexing handler, housekeeping (lease reaper, expiry sweep, orphan files) |
 | `face` | `FaceEngine` (OpenCV YuNet + SFace) and a small pool so a fixed number of engines are shared by threads |
 | `search` | Selfie rules (exactly one clear face) and the event-scoped distance query |
 | `attendee` | The guest API: notice, consent, search, download as ZIP, wrong-match reports, removal requests, withdrawal |
 | `privacy` | `PurgeService`: deleting one photo or a whole event, files and vectors included |
+| `drive` | Google Drive folder import: link parsing, the locked-down HTTP client, the listing and per-photo jobs |
 | `demo` | The optional public demo event and its per-visitor invites |
 | `eval` | An owner-only endpoint that returns raw distances, enabled only by the `eval` profile |
 | `config`, `common` | Settings (`spotme.*`), serving the web UI, error JSON, rate limiting, token helpers |
@@ -214,6 +215,10 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
 | Crash in the middle of a batch | 438 of 438 photos ready, 0 duplicate faces, drained 60.4 s after restart | `indexing.json` |
 | Exact search in one event, 100,000 vectors | p50 0.63 ms, recall 1.0 (HNSW with the event filter: recall 0.411) | `ann_bench.json` |
 | Hosted box, 36 photos | all indexed 6.4 s after the first upload; search p50 166.1 ms from the client | `hosted.json` |
+| Hosted box, scale test upload | 11,253 photos in 456.3 s (1,479.6 per minute), 0 failed, 0 server errors | `scale.json` |
+| Hosted box, search SQL at 11,251 photos | p50 129.5 ms before the query fix, 7.3 ms after | `scale.json` |
+| Hosted box, folder in eight formats | 11 of 11 uploaded, 3 non-photos skipped, the selfie found all 8 format copies | `ingest_live.json` |
+| Hosted box, Drive folder of 149 photos | 149 of 149 imported and indexed in 411.8 s, lowest free memory 56 MB | `ingest_live.json` |
 
 ## Limits
 

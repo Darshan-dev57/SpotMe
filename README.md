@@ -1,11 +1,13 @@
 # SpotMe
 
-Find your photos from a private event with one selfie.
+**An event photo platform.** Organizers bring in an event's photos (upload, whole folders or a Google Drive
+link) and every invited guest gets back only the photos they appear in, from one selfie.
 
-An organizer uploads the event's photos and a background worker indexes the faces. Each invited guest
-agrees to a short notice, takes one selfie and gets back the photos they are probably in, from that event
-only. The selfie is used for that one search and then discarded; a guest who opts in to new-photo alerts has
-only their face vector kept until the event ends.
+SpotMe is built as a backend system: one Java 21 / Spring Boot application and PostgreSQL. The interesting
+parts are the ones every photo product needs at scale: a durable job queue inside PostgreSQL, vector search
+with pgvector, an ingestion pipeline that never trusts its input, organizer and guest auth, rate limits, privacy
+flows with deletion that really deletes, and measurements on a real 473 MB server. Face matching is one module
+that runs two pretrained OpenCV models as a library; nothing is trained.
 
 **Live demo:** https://spotme.sites.tab.bot (tap *Try the demo*, then pick a sample selfie)
 
@@ -16,17 +18,20 @@ only their face vector kept until the event ends.
 ![License: MIT](https://img.shields.io/badge/license-MIT-informational)
 
 <p>
-  <img src="docs/images/screens/home.jpg" width="200" alt="Home page">
-  <img src="docs/images/screens/organizer-event.jpg" width="200" alt="Organizer event page after indexing">
+  <img src="docs/images/screens/organizer-upload.jpg" width="200" alt="Organizer upload with folder picker">
+  <img src="docs/images/screens/organizer-drive.jpg" width="200" alt="Google Drive import in progress">
   <img src="docs/images/screens/guest-selfie.jpg" width="200" alt="Guest selfie step">
   <img src="docs/images/screens/guest-results.jpg" width="200" alt="Guest results">
 </p>
 
-A 40 second walkthrough of the whole flow is in [`docs/media/spotme-demo.mp4`](docs/media/spotme-demo.mp4).
+A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotme-demo.mp4`](docs/media/spotme-demo.mp4).
 
 ## Contents
 
-- [How it works](#how-it-works)
+- [Backend highlights](#backend-highlights)
+- [Architecture](#architecture)
+- [How a photo moves through the system](#how-a-photo-moves-through-the-system)
+- [The face matching module](#the-face-matching-module)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Measured results](#measured-results)
@@ -39,26 +44,66 @@ A 40 second walkthrough of the whole flow is in [`docs/media/spotme-demo.mp4`](d
 - [Credits](#credits)
 - [License](#license)
 
-## How it works
+## Backend highlights
+
+- **A job queue in PostgreSQL, no broker.** Workers claim jobs with `FOR UPDATE SKIP LOCKED`, hold a lease
+  with a fresh claim token, retry with exponential backoff and jitter, and claim by priority so background
+  imports never hold back indexing. A worker killed mid-batch: 438 of 438 photos ready, 0 duplicate faces,
+  queue drained 60.4 s after restart.
+- **Scale test on a 473 MB box.** 11,253 photos uploaded through the real API in 456 s (1,479.6 per minute)
+  with 0 failed uploads and 0 server errors; the single worker kept up (largest queue: 24 jobs). One event now
+  holds 11,251 photos and 12,940 faces.
+- **A slow query found and fixed.** At that size the vector search took p50 129.5 ms in SQL. Materializing the
+  query vector once and moving the distance limit into `WHERE` brought it to p50 7.3 ms, with identical results
+  for all 678 searches that ran before the fix.
+- **pgvector search scoped to one event.** Exact search inside an event, benchmarked against an HNSW index:
+  0.63 ms p50 over 100,000 vectors with recall 1.0, where HNSW plus the event filter reached recall 0.411.
+- **Ingestion that never trusts input.** File type from magic bytes, pixel cap read from the header before
+  decoding, every photo re-encoded to JPEG (EXIF and GPS dropped), deduplicated by SHA-256. Eight formats,
+  folder upload, and a keyless Google Drive import whose HTTP client only talks to Google's hosts (SSRF-safe).
+- **Auth, limits and privacy.** Opaque session tokens stored as SHA-256 hashes, BCrypt passwords, per-guest
+  and per-email rate limits, HMAC-signed expiring photo links, versioned consent, removal requests that hide
+  at once, and an expiry purge that deletes files and vectors together.
+- **Tested and deployed.** 107 backend tests (JUnit 5 and Testcontainers against real PostgreSQL) and 23 web
+  tests run in GitHub Actions on every push; one script sets up the whole server from a bare Debian box.
+
+## Architecture
 
 ![SpotMe architecture](docs/images/architecture.png)
 
-1. **Upload.** The organizer uploads photos. Each one is checked (type from its bytes, size and pixel caps),
-   re-encoded to strip location data, stored, and a job is added to a queue table in PostgreSQL.
-2. **Index.** A worker claims jobs with `SELECT ... FOR UPDATE SKIP LOCKED` and a lease, finds faces with
-   OpenCV YuNet, turns each face into a 128-number vector with SFace, and stores the vectors with pgvector.
-   If the worker dies, the lease runs out and another worker picks the job up again.
+One Spring Boot application holds all of the logic: the REST API, the job worker, the ingestion pipeline,
+search and the privacy rules. The web UI is a static Next.js export served by the same application, so
+production is a single process plus PostgreSQL. The same jar can also run as API only or worker only
+(Spring profiles), because the queue lives in the database. The reasoning behind each choice is in
+[docs/DECISIONS.md](docs/DECISIONS.md), and the components, data model and flows are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## How a photo moves through the system
+
+1. **Ingest.** Photos arrive one per request (the page sends 4 at a time, from files or whole folders) or from
+   a Google Drive folder link, which becomes one background job per photo. Each photo is checked, re-encoded,
+   stored, and a row plus its `INDEX_PHOTO` job are committed in one transaction.
+2. **Index.** A worker claims the job with `SELECT ... FOR UPDATE SKIP LOCKED` and a lease, runs the face
+   module, and saves one 128-number vector per face in a `vector(128)` column. Before saving it re-checks that
+   the photo and event are still wanted and that its claim is still valid. If the worker dies, the lease runs
+   out and another worker picks the job up.
 3. **Invite.** The organizer publishes the event and creates one private link per guest.
 4. **Consent.** The guest reads the organizer's purpose notice and agrees before anything else happens.
-5. **Search.** The guest's selfie must show exactly one clear face. Its vector is compared with the faces of
-   that one event only, and photos closer than a measured threshold come back as short-lived signed links.
-6. **Remove.** A guest can remove the photos where they are alone (group photos stay), or withdraw consent.
-   The photos are hidden at once; the organizer approves deletion, which removes the files, thumbnails and
-   face vectors.
+5. **Search.** The selfie must show exactly one clear face. One SQL query compares its vector with the faces of
+   that event only, using pgvector's cosine distance, and the photos come back as short-lived signed links.
+   The selfie is never stored.
+6. **Remove and expire.** A guest can remove the photos where they are alone, or withdraw. Photos are hidden at
+   once; the organizer approves deletion, which removes files, thumbnails and vectors. At expiry the whole
+   event is purged by a job.
 
-Java and Spring Boot hold all of the logic: the API, the job queue, the face pipeline, search and privacy
-rules. The web UI is a static Next.js export served by the same application, so production is a single
-process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.md](docs/DECISIONS.md).
+## The face matching module
+
+The `face` package wraps two pretrained models from the OpenCV Zoo, run in-process through OpenCV's Java
+bindings: YuNet finds faces and SFace turns each face into 128 numbers. No model is trained or fine-tuned
+here. The backend work around it is choosing and measuring: the match threshold (0.51) was picked from a
+sweep on the 11,251-photo event, where it cut strangers who got any photo from 17.6% to 3.7%, and the search
+query, pool size and memory limits were tuned on the hosted box. Details in
+[docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
 
 ## Features
 
@@ -80,13 +125,6 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 - "Not me" reports and consent withdrawal
 - "Remove me": deletes the photos where you are alone, after the organizer confirms; group photos stay
 
-**Engineering**
-- Durable job queue in PostgreSQL: leases, retries with backoff, idempotent indexing, crash recovery
-- Event-scoped exact vector search, benchmarked against HNSW
-- Opaque session tokens stored as SHA-256 hashes, BCrypt passwords, rate limits
-- HMAC-signed, expiring photo links
-- Expiry sweep and purge that remove files and vectors together
-
 ## Tech stack
 
 | Layer | Choice |
@@ -106,13 +144,17 @@ Every number below comes from a JSON file in [`eval/out/`](eval/out); how each w
 
 | What | Result |
 |---|---|
-| Match threshold 0.51, live on an 11,251-photo event | people with 10 to 15 photos: 680 of their 720 photos found; strangers who got any photo: 10 of 272 (17.6% at the old 0.55) |
-| Accuracy at threshold 0.55 (small event, test split) | precision 0.9955, recall 0.8871; 0 of 25 people not in the event got a result |
-| Search latency (development machine, 174 searches) | p50 59.2 ms, p95 79.7 ms |
-| Indexing throughput (2 worker threads x 2 OpenCV threads) | 582.4 photos per minute |
+| Scale test upload, hosted box (2 vCPUs, 473 MB RAM) | 11,253 photos in 456.3 s (1,479.6 per minute), 0 failed, 0 server errors; queue empty 10 s after the last upload |
+| Search SQL in the 11,251-photo event, before and after the query fix | p50 129.5 ms to 7.3 ms (p95 170.9 ms to 12.2 ms), same results |
+| Search end to end on the hosted box, 11,251 photos | p50 163.1 ms, p95 246.9 ms from the client (1,733 searches) |
+| Google Drive folder import, hosted box | 149 of 149 photos imported and indexed in 411.8 s, lowest free memory 56 MB |
+| Folder upload in eight formats, hosted box | 11 of 11 uploaded, 3 non-photos skipped; one selfie found all 8 format copies |
 | Worker killed mid-batch | 438 of 438 photos ready, 0 duplicate faces, queue drained 60.4 s after restart |
 | Exact search inside one event (100,000 vectors) | p50 0.63 ms, recall 1.0, against HNSW plus event filter at recall 0.411 |
-| Hosted demo box (2 vCPUs, 473 MB RAM), 36 photos | all indexed 6.4 s after the first upload; search p50 166.1 ms from the client |
+| Indexing throughput, development machine (2 worker threads x 2 OpenCV threads) | 582.4 photos per minute |
+| Search latency, development machine (174 searches) | p50 59.2 ms, p95 79.7 ms |
+| Match threshold 0.51, live on the 11,251-photo event | people with 10 to 15 photos: 680 of their 720 photos found; strangers who got any photo: 10 of 272 (17.6% at the old 0.55) |
+| Accuracy at threshold 0.55 (small event, test split) | precision 0.9955, recall 0.8871; 0 of 25 people not in the event got a result |
 
 ![Precision and recall by threshold](docs/images/accuracy.png)
 
@@ -171,7 +213,9 @@ cd web && npm run lint
 
 The integration tests run against a real PostgreSQL with pgvector and real face models. They cover the
 upload checks, the job queue under concurrent workers, recovery after a worker is killed mid-batch, event
-scoping of search, consent and withdrawal, removal and purge, expiry, signed links and the demo event.
+scoping of search, consent and withdrawal, removal and purge, expiry, signed links, the demo event, every
+server-side image format (uploaded, indexed and found by a selfie) and the Drive import (with Google's
+answers faked, so it runs offline).
 CI runs the same commands on every push.
 
 ## Project structure
@@ -182,6 +226,7 @@ backend/        Spring Boot application (package dev.darshan.spotme)
   event/        events, notices, invites, review and removal decisions
   media/        upload checks, re-encoding, storage, signed links
   jobs/         job queue, worker loop, indexing, housekeeping
+  drive/        Google Drive folder import (listing, downloads, import jobs)
   face/         OpenCV YuNet + SFace engine and pool
   search/       selfie rules and event-scoped vector search
   attendee/     guest API: consent, search, download, removal, withdrawal
@@ -198,6 +243,8 @@ scripts/        model and demo photo downloads
 
 | | | |
 |---|---|---|
+| <img src="docs/images/screens/organizer-upload.jpg" width="220" alt="Folder upload finished"> | <img src="docs/images/screens/organizer-drive.jpg" width="220" alt="Google Drive import in progress"> | <img src="docs/images/screens/formats-results.jpg" width="220" alt="One selfie finds the same photo in eight formats"> |
+| A folder uploaded, non-photos skipped | Importing a Google Drive folder | One selfie, found in all eight formats |
 | <img src="docs/images/screens/organizer-event.jpg" width="220" alt="Organizer event page"> | <img src="docs/images/screens/organizer-links.jpg" width="220" alt="Private guest links"> | <img src="docs/images/screens/organizer-removal.jpg" width="220" alt="Removal request review"> |
 | Photos indexed and searchable | One private link per guest | Reviewing a removal request |
 | <img src="docs/images/screens/guest-notice.jpg" width="220" alt="Guest notice"> | <img src="docs/images/screens/guest-results.jpg" width="220" alt="Guest results"> | <img src="docs/images/screens/guest-viewer.jpg" width="220" alt="Photo viewer"> |
@@ -216,8 +263,10 @@ scripts/        model and demo photo downloads
 - Exact search is fast for thousands of faces per event; an event with millions of faces would need
   partitioning or a filtered vector index.
 - New-photo alerts are in the app only: a guest sees them by opening their private link, nothing is pushed.
-- Erasing a guest from group photos is built but switched off: the inpainting it needs looks natural only when
-  the person stands apart, and needs about 1 GB of memory ([test results](docs/MEASUREMENTS.md)).
+- Guests can't be erased from group photos; removal takes only the photos where they are alone. The inpainting
+  test behind that choice is in [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md).
+- Drive import reads Google's embedded folder page, which is not an official API and can change; only folders
+  shared as "Anyone with the link" work.
 - HEIC and AVIF photos are converted by the organizer page, so they must be uploaded there (not straight to
   the API). Animated GIFs keep only their first frame.
 - Invite links are not tied to a verified identity. A forwarded link works until the organizer revokes it,
@@ -227,8 +276,8 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 
 ## Documentation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data model, the four main flows, security model, hosting
-- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-two design decisions with the alternative, the tradeoff and what would change them
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data model, the five main flows, security model, hosting
+- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-four design decisions with the alternative, the tradeoff and what would change them
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 
@@ -237,6 +286,8 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - UI components: [ObsidianUI](https://www.obsidianui.dev/) (Discover Button) and shadcn-style primitives
   built on [Radix UI](https://www.radix-ui.com/)
 - Face models: [OpenCV Zoo](https://github.com/opencv/opencv_zoo), YuNet (MIT) and SFace (Apache 2.0)
+- HEIC decoding in the browser: [heic-to](https://github.com/hoppergee/heic-to) (LGPL-3.0, built on libheif),
+  loaded as a separate file only when a HEIC photo is picked
 - Demo photos: [NASA Image and Video Library](https://images.nasa.gov/), public domain
 - Evaluation data: [Labeled Faces in the Wild](http://vis-www.cs.umass.edu/lfw/), used only as a public
   benchmark and never committed
@@ -244,8 +295,5 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 ## License
 
 [MIT](LICENSE)
-
-The organizer page loads [heic-to](https://github.com/hoppergee/heic-to) (LGPL-3.0, built on libheif) as a
-separate file, only when a HEIC photo is picked. The face models are OpenCV Zoo's YuNet (MIT) and SFace (Apache 2.0).
 
 SpotMe is a personal project. It is not affiliated with any company or product of the same name.
