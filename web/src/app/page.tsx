@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { SiteHeader } from "@/components/brand";
-import { DemoButton } from "@/components/demo-button";
+import { SampleButton } from "@/components/sample-button";
 import { Button } from "@/components/ui/button";
 
 const SHEET = [
-  { src: "/demo/behnken.jpg", match: false },
-  { src: "/demo/crew.jpg", match: true },
-  { src: "/demo/glover.jpg", match: false },
-  { src: "/demo/hurley-2.jpg", match: true },
-  { src: "/demo/hopkins.jpg", match: false },
+  { src: "/sample/behnken.jpg", match: false },
+  { src: "/sample/crew.jpg", match: true },
+  { src: "/sample/glover.jpg", match: false },
+  { src: "/sample/hurley-2.jpg", match: true },
+  { src: "/sample/hopkins.jpg", match: false },
 ];
 
 const STEPS = [
@@ -44,7 +44,7 @@ export default function Home() {
               One selfie shows the photos you are probably in, only from the event you were invited to.
             </p>
             <div className="mt-8 flex flex-wrap items-start gap-x-4 gap-y-3">
-              <DemoButton />
+              <SampleButton />
               <Button asChild size="lg" variant="outline">
                 <Link href="/organizer">
                   Create an event <ArrowRight />
@@ -93,7 +93,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 text-sm text-muted-foreground sm:flex-row sm:justify-between sm:px-8">
           <p>A portfolio project.</p>
           <p>
-            Demo photos: NASA · UI parts from{" "}
+            Sample photos: NASA · UI parts from{" "}
             <a className="underline" href="https://www.obsidianui.dev/">
               ObsidianUI
             </a>

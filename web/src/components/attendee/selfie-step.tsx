@@ -9,11 +9,11 @@ import { LiveCamera } from "@/components/attendee/live-camera";
 import { detectCameraMode } from "@/lib/camera";
 import { shrinkImage } from "@/lib/image";
 
-/** Sample "selfies" for the public demo: official NASA portraits that are not in the album itself. */
-const DEMO_SELFIES = [
-  { src: "/demo/behnken.jpg", name: "Bob Behnken", note: "in the album" },
-  { src: "/demo/hurley-2.jpg", name: "Doug Hurley", note: "in the album" },
-  { src: "/demo/glover.jpg", name: "Victor Glover", note: "not in it" },
+/** Sample "selfies" for the public sample event: official NASA portraits that are not in the album itself. */
+const SAMPLE_SELFIES = [
+  { src: "/sample/behnken.jpg", name: "Bob Behnken", note: "in the album" },
+  { src: "/sample/hurley-2.jpg", name: "Doug Hurley", note: "in the album" },
+  { src: "/sample/glover.jpg", name: "Victor Glover", note: "not in it" },
 ];
 
 /** One selfie, sent as the raw request body and matched in memory on the server. */
@@ -87,11 +87,11 @@ export function SelfieStep({
       <h1 className="text-3xl font-semibold">Take a selfie</h1>
       <p className="mt-2 max-w-prose text-muted-foreground">Good light, only you in the frame.</p>
 
-      {notice.demo && (
+      {notice.sample && (
         <div className="mt-6">
           <h2 className="font-semibold">Try a sample selfie</h2>
           <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
-            {DEMO_SELFIES.map((s) => (
+            {SAMPLE_SELFIES.map((s) => (
               <li key={s.src}>
                 <button
                   type="button"

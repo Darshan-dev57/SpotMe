@@ -146,7 +146,7 @@ export type Notice = {
   published: boolean;
   invitedAs: string;
   withdrawn: boolean;
-  demo: boolean;
+  sample: boolean;
 };
 
 /** A photo a guest may see, with short-lived signed links. */
