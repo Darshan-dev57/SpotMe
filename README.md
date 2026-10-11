@@ -64,6 +64,8 @@ A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotm
 - **Auth, limits and privacy.** Opaque session tokens stored as SHA-256 hashes, BCrypt passwords, per-guest
   and per-email rate limits, HMAC-signed expiring photo links, versioned consent, removal requests that hide
   at once, and an expiry purge that deletes files and vectors together.
+- **Storage behind one interface.** `PhotoStorage` with a local disk implementation and an S3 one, tested
+  against MinIO in Docker; bucket downloads go out as 60-second signed links after the app's own access check.
 - **Metrics and logs you can act on.** Prometheus metrics for queue depth, oldest job wait, job outcomes and
   retries, search p50/p95, upload failures, auth failures, rate limit rejections, storage and the DB pool; a
   request id or job id on every log line, JSON logs on the server, no tokens or photo data in logs
@@ -392,8 +394,8 @@ scripts/        start script, model and sample photo downloads
 
 - Accuracy is measured on LFW composites, which are mostly frontal and well lit. Real event photos (turned
   heads, blur, small faces in crowds) will give lower recall.
-- One machine: photo files are on local disk and rate limits are in memory. Several API instances would need
-  shared storage and a shared rate limit store.
+- Rate limits are in memory, per process. Photos can already live in a shared S3-compatible bucket
+  ([docs/STORAGE.md](docs/STORAGE.md)), but several API instances would each keep their own limits.
 - Exact search is fast for thousands of faces per event; an event with millions of faces would need
   partitioning or a filtered vector index.
 - New-photo alerts are in the app only: a guest sees them by opening their private link, nothing is pushed.
@@ -411,11 +413,12 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 ## Documentation
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, data model, the five main flows, security model, hosting
-- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-four design decisions with the alternative, the tradeoff and what would change them
+- [docs/DECISIONS.md](docs/DECISIONS.md): twenty-eight design decisions with the alternative, the tradeoff and what would change them
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md): eight threats, the defence for each and the test that proves it
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md): every metric, where it is counted, and what the logs never contain
+- [docs/STORAGE.md](docs/STORAGE.md): photos on local disk or in an S3-compatible bucket (MinIO), and how deletion works on both
 - [SECURITY.md](SECURITY.md): how to report a security problem
 
 ## Credits
