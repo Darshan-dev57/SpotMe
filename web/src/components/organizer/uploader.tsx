@@ -5,6 +5,7 @@ import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ApiError, api } from "@/lib/api";
+import { ConversionError, PHOTO_ACCEPT, isPhotoFile, prepareUpload, smallerCopy } from "@/lib/image";
 import { cn } from "@/lib/utils";
 
 type Item = { name: string; state: "waiting" | "uploading" | "done" | "duplicate" | "error"; message?: string };
@@ -25,8 +26,25 @@ export function Uploader({ eventId, token, onUploaded }: { eventId: string; toke
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
+  /** One photo: HEIC/AVIF become JPEG first; a photo over the server's pixel cap is sent again as a smaller copy. */
+  async function send(file: File): Promise<string> {
+    const form = (body: Blob) => {
+      const f = new FormData();
+      f.append("file", body, file.name);
+      return f;
+    };
+    const body = await prepareUpload(file);
+    try {
+      return (await api<{ status: string }>(`/api/events/${eventId}/photos`, { token, body: form(body) })).status;
+    } catch (e) {
+      const smaller = e instanceof ApiError && e.code === "too_many_pixels" ? await smallerCopy(body) : null;
+      if (!smaller) throw e;
+      return (await api<{ status: string }>(`/api/events/${eventId}/photos`, { token, body: form(smaller) })).status;
+    }
+  }
+
   async function start(files: File[]) {
-    const images = files.filter((f) => /image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name));
+    const images = files.filter(isPhotoFile);
     if (images.length === 0) return;
     const offset = items.length;
     setItems((prev) => [...prev, ...images.map((f) => ({ name: f.name, state: "waiting" as const }))]);
@@ -36,13 +54,12 @@ export function Uploader({ eventId, token, onUploaded }: { eventId: string; toke
       while (next < images.length) {
         const i = next++;
         update(offset + i, { state: "uploading" });
-        const form = new FormData();
-        form.append("file", images[i]);
         try {
-          const res = await api<{ status: string }>(`/api/events/${eventId}/photos`, { token, body: form });
-          update(offset + i, { state: res.status === "duplicate" ? "duplicate" : "done" });
+          const status = await send(images[i]);
+          update(offset + i, { state: status === "duplicate" ? "duplicate" : "done" });
         } catch (e) {
-          update(offset + i, { state: "error", message: e instanceof ApiError ? e.message : "Upload failed" });
+          const message = e instanceof ApiError || e instanceof ConversionError ? e.message : "Upload failed";
+          update(offset + i, { state: "error", message });
         }
         if (i % 8 === 0) onUploaded();
       }
@@ -76,7 +93,7 @@ export function Uploader({ eventId, token, onUploaded }: { eventId: string; toke
         <ImagePlus className="size-7 text-muted-foreground" aria-hidden="true" />
         <div>
           <p className="font-medium">Drop photos here</p>
-          <p className="mt-1 text-sm text-muted-foreground">JPEG or PNG, up to 20 MB each.</p>
+          <p className="mt-1 text-sm text-muted-foreground">JPEG, PNG, HEIC, WebP, AVIF, TIFF, BMP or GIF, up to 20 MB each.</p>
         </div>
         <Button type="button" variant="outline" onClick={() => input.current?.click()}>
           Choose photos
@@ -84,7 +101,7 @@ export function Uploader({ eventId, token, onUploaded }: { eventId: string; toke
         <input
           ref={input}
           type="file"
-          accept="image/jpeg,image/png"
+          accept={PHOTO_ACCEPT}
           multiple
           hidden
           onChange={(e) => {
