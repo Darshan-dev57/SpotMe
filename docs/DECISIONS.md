@@ -371,3 +371,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
   all" is a two-minute signed link the browser saves to disk itself. **Why:** a 200-photo ZIP is hundreds of MB,
   which neither a 473 MB server nor a phone browser should hold in memory; the guest can only zip photos their
   last search showed them (`guest_matches`) or public ones.
+
+## 27. Live progress over Server-Sent Events
+
+- **Choice:** Spring `SseEmitter`, not WebSocket. **Why:** the counts only flow from server to browser, and SSE is plain HTTP that works through the existing auth interceptor and proxies with no extra protocol or library.
