@@ -179,6 +179,8 @@ anything else (SSRF) or fill its memory.
 | Retention | Expiry at most 90 days; purge removes files and vectors; removal requests hide photos immediately |
 | Organizer duty | Creating an event requires confirming that everyone pictured is an adult and has agreed |
 
+The threats behind this table, and the test for each defence, are in [THREAT_MODEL.md](THREAT_MODEL.md).
+
 ## Process roles and configuration
 
 | Profile | Runs | Typical use |
