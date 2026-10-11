@@ -57,7 +57,10 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 
 ## Flow 1: an organizer uploads photos
 
-1. The web page sends each file as its own request, 4 at a time, so one bad file never fails a batch.
+1. The web page sends each file as its own request, 4 at a time, so one bad file never fails a batch. The
+   organizer can pick photos, pick a whole folder (`<input webkitdirectory>`) or drop a folder; the page walks
+   every subfolder, sends only photo files and counts the rest (videos, documents, hidden system files) as
+   skipped. Once the server answers `event_full`, the rest of a big folder is not sent.
 2. `PhotoIntake` hashes the bytes. A file already in the event returns `duplicate`; a file that was removed on
    request is refused (`removed_photo`). An event holds at most `spotme.upload.max-photos-per-event` photos.
 3. `ImageProcessor` reads the real type from the first bytes (JPEG, PNG, WebP, TIFF, BMP or GIF), reads only
@@ -163,7 +166,7 @@ scripts) and `deploy/start.sh` runs on the box:
    settings (`shared_buffers` 32 MB, 20 connections) and creates the database, user and `vector` extension,
 3. downloads a Java 21 runtime (Eclipse Temurin), the OpenCV jar from Maven Central and the two face models,
    checking SHA-256 where the source publishes one,
-4. starts the app with one face engine, one worker thread, a 128 MB heap, a 16 megapixel cap, at most 60
+4. starts the app with one face engine, one worker thread, a 128 MB heap, a 16 megapixel cap, at most 2,000
    photos per event and the demo event switched on.
 
 Every step checks what is already present, so a restart takes seconds.
@@ -193,7 +196,7 @@ Details and method: [MEASUREMENTS.md](MEASUREMENTS.md).
   millisecond in the benchmark); a single event with millions of faces would need partitioning or a
   filtered index.
 - **The hosted box is small.** Peak memory while indexing (467 to 493 MB) is about the same as its 473 MB of
-  RAM, so it relies on swap; photos are capped at 16 megapixels and 60 per event there.
+  RAM, so it relies on swap; photos are capped at 16 megapixels and 2,000 per event there.
 - **Alerts are pull, not push.** A guest who opts in sees new photos when they open their private link; nothing
   is sent to them.
 - **Guests cannot be erased from group photos.** Removal takes only their solo photos (decision 21).
