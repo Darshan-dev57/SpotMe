@@ -4,6 +4,7 @@ import dev.darshan.spotme.common.ApiException;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** The only way photo bytes leave the server. */
@@ -45,6 +48,13 @@ public class MediaController {
         if (key == null) {
             throw ApiException.forbidden("You no longer have access to this photo.");
         }
+        String downloadName = variant.equals("original") ? "spotme-" + photoId + ".jpg" : null;
+        // with bucket storage the guest is sent on to a short-lived bucket link instead of the app copying bytes
+        Optional<URI> direct = storage.directLink(key, downloadName);
+        if (direct.isPresent()) {
+            return ResponseEntity.status(HttpStatus.FOUND).location(direct.get())
+                    .cacheControl(CacheControl.noStore()).build();
+        }
         byte[] bytes;
         try {
             bytes = storage.get(key);
@@ -54,8 +64,8 @@ public class MediaController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.IMAGE_JPEG);
         headers.setCacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate());
-        if (variant.equals("original")) {
-            headers.setContentDisposition(ContentDisposition.attachment().filename("spotme-" + photoId + ".jpg").build());
+        if (downloadName != null) {
+            headers.setContentDisposition(ContentDisposition.attachment().filename(downloadName).build());
         }
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
