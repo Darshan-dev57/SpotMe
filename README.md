@@ -26,6 +26,22 @@ that runs two pretrained OpenCV models as a library; nothing is trained.
 
 A 65 second walkthrough recorded on the live site at desktop size (a guest finds their photos in the sample event, then an organizer uploads photos with live progress, publishes and creates guest links) is in [`docs/media/spotme-walkthrough.mp4`](docs/media/spotme-walkthrough.mp4).
 
+## At a glance
+
+- **One Spring Boot app, one PostgreSQL.** The API, the indexing worker and the static web UI run in one
+  process (or split with the `api` and `worker` profiles). PostgreSQL holds the data, the job queue and the face
+  vectors (pgvector).
+- **Upload path:** checks and re-encoding in the request, then a queued job finds faces with OpenCV
+  (YuNet, SFace) and stores one vector per face.
+- **Guest path:** consent, one selfie compared in memory and never stored, a search inside that event only, and
+  photos served through short-lived signed links.
+- **Storage:** local disk by default, or an S3-compatible bucket. Diagram and details in
+  [Architecture](#architecture).
+
+**Known limitations:** accuracy is measured on LFW, not on real event photos; rate limits are kept in memory,
+per process; exact search suits events up to thousands of faces; alerts are in-app only; guests can be removed
+from their solo photos, not erased from group photos. More in [Limits](#limits).
+
 ## Contents
 
 - [Backend highlights](#backend-highlights)
@@ -70,8 +86,8 @@ A 65 second walkthrough recorded on the live site at desktop size (a guest finds
   retries, search p50/p95, upload failures, auth failures, rate limit rejections, storage and the DB pool; a
   request id or job id on every log line, JSON logs on the server, no tokens or photo data in logs
   ([docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)).
-- **Tested and deployed.** 107 backend tests (JUnit 5 and Testcontainers against real PostgreSQL) and 23 web
-  tests run in GitHub Actions on every push; one script sets up the whole server from a bare Debian box.
+- **Tested and deployed.** 146 backend tests (JUnit 5 and Testcontainers against real PostgreSQL and MinIO) and
+  38 web tests run in GitHub Actions on every push; one script sets up the whole server from a bare Debian box.
 
 ## Architecture
 
@@ -363,6 +379,9 @@ server-side image format (uploaded, indexed and found by a selfie) and the Drive
 answers faked, so it runs offline).
 CI runs the same commands on every push.
 
+Counts at release 1.0.0: 146 backend tests in 36 classes (105 integration tests against real PostgreSQL, one of
+them with photos in MinIO, and 41 unit tests) and 38 web tests in 9 files.
+
 ## Project structure
 
 ```
@@ -430,6 +449,9 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - [docs/EVALUATION.md](docs/EVALUATION.md): precision, recall, F1, error rates, latency, throughput and recovery, with results by threshold
 - [docs/STORAGE.md](docs/STORAGE.md): photos on local disk or in an S3-compatible bucket (MinIO), and how deletion works on both
 - [SECURITY.md](SECURITY.md): how to report a security problem
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, checks before a pull request, commit and branch conventions
+- [CHANGELOG.md](CHANGELOG.md): what is in each release
+- [.env.example](.env.example): every setting you can change, with local values
 
 ## Credits
 
