@@ -275,6 +275,7 @@ public class EventController {
         access.requireOwner(id, http);
         jdbc.update("UPDATE memberships SET revoked_at = now() WHERE id = ? AND event_id = ?", membershipId, id);
         jdbc.update("DELETE FROM photo_alerts WHERE membership_id = ? AND event_id = ?", membershipId, id);
+        jdbc.update("DELETE FROM guest_matches WHERE membership_id = ?", membershipId);
         jdbc.update("DELETE FROM sessions WHERE membership_id = ?", membershipId);
         return Map.of("revoked", true);
     }

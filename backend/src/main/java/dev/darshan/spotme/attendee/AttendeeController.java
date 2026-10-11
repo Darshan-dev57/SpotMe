@@ -8,7 +8,6 @@ import dev.darshan.spotme.common.RateLimiter;
 import dev.darshan.spotme.common.Tokens;
 import dev.darshan.spotme.config.SpotMeProperties;
 import dev.darshan.spotme.media.MediaSigner;
-import dev.darshan.spotme.media.PhotoStorage;
 import dev.darshan.spotme.removal.RemovalService;
 import dev.darshan.spotme.search.SearchService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,8 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Attendee side: open invite, read the notice, agree, search with a selfie,
@@ -57,19 +54,19 @@ public class AttendeeController {
     private final SessionService sessions;
     private final SearchService search;
     private final MediaSigner signer;
-    private final PhotoStorage storage;
     private final SpotMeProperties props;
     private final RemovalService removals;
     private final RateLimiter<UUID> limiter;
+    private final PhotoZipper zipper;
 
     public AttendeeController(JdbcTemplate jdbc, SessionService sessions, SearchService search, MediaSigner signer,
-                              PhotoStorage storage, SpotMeProperties props, RemovalService removals) {
+                              SpotMeProperties props, RemovalService removals, PhotoZipper zipper) {
         this.jdbc = jdbc;
+        this.zipper = zipper;
         this.removals = removals;
         this.sessions = sessions;
         this.search = search;
         this.signer = signer;
-        this.storage = storage;
         this.props = props;
         this.limiter = new RateLimiter<>(props.search().perMinuteLimit());
     }
@@ -132,6 +129,8 @@ public class AttendeeController {
         } catch (SearchService.BadSelfieException e) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, e.code(), e.getMessage());
         }
+        // remember what this guest was shown, so a ZIP download can be checked against it
+        zipper.rememberMatches(me.membershipId(), result.matches().stream().map(SearchService.Match::photoId).toList());
         String subject = "m:" + me.membershipId();
         List<Map<String, Object>> photos = new ArrayList<>();
         for (SearchService.Match match : result.matches()) {
@@ -234,30 +233,60 @@ public class AttendeeController {
         Principal.Attendee me = AuthInterceptor.attendee(http);
         jdbc.update("UPDATE memberships SET withdrawn_at = now() WHERE id = ?", me.membershipId());
         jdbc.update("DELETE FROM photo_alerts WHERE membership_id = ?", me.membershipId());
+        zipper.forget(me.membershipId());
         sessions.endAllForMembership(me.membershipId());
         return Map.of("withdrawn", true);
     }
 
-    /** Streams the chosen photos as one ZIP. Access is re-checked for every photo. */
+    /** Streams the chosen photos as one ZIP. Photos the guest may not see are left out. */
     @PostMapping(value = "/api/attendee/download", produces = "application/zip")
     public void downloadZip(@Valid @RequestBody PhotoIdsRequest req, HttpServletRequest http,
                             HttpServletResponse response) throws IOException {
         Principal.Attendee me = AuthInterceptor.attendee(http);
         requirePublished(me.eventId());
-        List<Map<String, Object>> rows = jdbc.queryForList("""
-                SELECT id, object_key FROM photos
-                WHERE event_id = ? AND id = ANY (?) AND status = 'ready' AND hidden_at IS NULL AND suppressed_at IS NULL
-                """, me.eventId(), req.photoIds().toArray(UUID[]::new));
-        response.setContentType("application/zip");
-        response.setHeader("Content-Disposition", "attachment; filename=\"spotme-photos.zip\"");
-        try (ZipOutputStream zip = new ZipOutputStream(response.getOutputStream())) {
-            int n = 1;
-            for (Map<String, Object> row : rows) {
-                zip.putNextEntry(new ZipEntry(String.format("photo-%03d.jpg", n++)));
-                zip.write(storage.get((String) row.get("object_key")));
-                zip.closeEntry();
-            }
+        List<String> keys = zipper.chosen(me.membershipId(), me.eventId(), req.photoIds());
+        zipper.stream(me.membershipId(), keys, zipName(me.eventId()), response);
+    }
+
+    /**
+     * A two-minute link for "Download all". Opening it lets the browser save the ZIP straight to
+     * disk (a fetch would have to hold the whole file in memory first, which a phone may not manage).
+     */
+    @PostMapping("/api/attendee/download-link")
+    public Map<String, Object> downloadLink(HttpServletRequest http) {
+        Principal.Attendee me = AuthInterceptor.attendee(http);
+        requirePublished(me.eventId());
+        int count = zipper.allMatches(me.membershipId(), me.eventId()).size();
+        if (count == 0) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "nothing_to_download", "Search with a selfie first.");
         }
+        return Map.of("url", signer.zipLink(me.membershipId()), "count", count);
+    }
+
+    /** Every photo from the guest's last search, as one ZIP. The signed link is the credential. */
+    @GetMapping(value = "/api/zip/{membershipId}", produces = "application/zip")
+    public void downloadAll(@PathVariable UUID membershipId, @RequestParam long exp, @RequestParam String sig,
+                            HttpServletResponse response) throws IOException {
+        if (!signer.verifyZip(membershipId, exp, sig)) {
+            throw ApiException.forbidden("This download link has expired. Go back and tap Download again.");
+        }
+        List<UUID> events = jdbc.queryForList("""
+                SELECT m.event_id FROM memberships m JOIN events e ON e.id = m.event_id
+                WHERE m.id = ? AND m.consented_at IS NOT NULL AND m.consent_notice_version = e.notice_version
+                  AND m.withdrawn_at IS NULL AND m.revoked_at IS NULL
+                  AND e.status = 'published' AND e.expires_at > now()
+                """, UUID.class, membershipId);
+        if (events.isEmpty()) {
+            throw ApiException.forbidden("You no longer have access to this event.");
+        }
+        UUID eventId = events.get(0);
+        zipper.stream(membershipId, zipper.allMatches(membershipId, eventId), zipName(eventId), response);
+    }
+
+    private String zipName(UUID eventId) {
+        String title = jdbc.queryForObject("SELECT title FROM events WHERE id = ?", String.class, eventId);
+        String slug = title == null ? "" : title.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        return (slug.isEmpty() ? "spotme" : slug) + "-photos.zip";
     }
 
     // ---------- helpers ----------
