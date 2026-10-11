@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DriveClientTest {
 
@@ -58,5 +59,21 @@ class DriveClientTest {
     void stopsReadingPastTheByteLimit() throws IOException {
         assertThat(DriveClient.readAtMost(new ByteArrayInputStream(new byte[100]), 100)).hasSize(100);
         assertThat(DriveClient.readAtMost(new ByteArrayInputStream(new byte[101]), 100)).isNull();
+    }
+
+    @Test
+    void aRedirectToAnythingButGoogleIsRefused() throws IOException {
+        URI start = URI.create("https://drive.google.com/uc?export=download&id=x");
+        assertThat(DriveClient.redirectTarget(start, "https://drive.usercontent.google.com/download?id=x"))
+                .isEqualTo(URI.create("https://drive.usercontent.google.com/download?id=x"));
+        assertThat(DriveClient.redirectTarget(start, "/uc?id=y")).isEqualTo(URI.create("https://drive.google.com/uc?id=y"));
+
+        for (String location : List.of("http://169.254.169.254/latest/meta-data/", "https://127.0.0.1/",
+                "https://localhost:8080/actuator/health", "//10.0.0.5/admin", "http://drive.google.com/uc?id=x",
+                "https://drive.google.com.attacker.example/", "https://drive.google.com@192.168.1.1/",
+                "file:///etc/passwd", "https://[::1]/", "ht tp://broken")) {
+            assertThatThrownBy(() -> DriveClient.redirectTarget(start, location))
+                    .as(location).isInstanceOf(IOException.class).hasMessage("blocked_host");
+        }
     }
 }

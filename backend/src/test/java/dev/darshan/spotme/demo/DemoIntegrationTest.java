@@ -85,6 +85,23 @@ class DemoIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void aMadeUpForwardedForEntryDoesNotDodgeTheLimit() {
+        // the visitor writes a new fake address into X-Forwarded-For each time; our proxy appends the real one
+        var http = RestClient.builder().baseUrl("http://localhost:" + port)
+                .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+        int limited = 0;
+        for (int i = 0; i < 6; i++) {
+            int status = http.post().uri("/api/demo/invite")
+                    .header("X-Forwarded-For", "198.18.0." + (i + 1) + ", 198.51.100.23")
+                    .retrieve().toBodilessEntity().getStatusCode().value();
+            if (status == 429) {
+                limited++;
+            }
+        }
+        assertThat(limited).isEqualTo(3);
+    }
+
+    @Test
     void theDemoOrganizerCannotSignIn() {
         var res = api.post("/api/auth/login", null, Map.of("email", DemoService.ORGANIZER_EMAIL, "password", "password123"));
         assertThat(res.getStatusCode().value()).isEqualTo(401);
