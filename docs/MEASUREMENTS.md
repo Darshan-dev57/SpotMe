@@ -8,7 +8,7 @@ what each file measured, on what machine, and how to reproduce it. The scripts a
 | Name | What it is | Used for |
 |---|---|---|
 | Development machine | Debian 12, 4 vCPUs, 8 GB RAM, shared with other work (load average 2 to 4.6 during runs) | upload, indexing, crash recovery, accuracy, latency, vector search, memory |
-| Hosted demo box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json`, `scale.json`, `ingest_live.json` |
+| Hosted box | Debian 12, 2 vCPUs, 473 MB RAM, 1 GB swap file added by `deploy/start.sh` | `hosted.json`, `scale.json`, `ingest_live.json` |
 
 Because the development machine was shared, treat its throughput numbers as conservative.
 
@@ -21,7 +21,7 @@ are not in the event at all, and 300 one-off distractors. People alternate betwe
 pick the threshold, and a **test** split, checked once afterwards. No LFW image is committed; see
 [`eval/README.md`](../eval/README.md).
 
-The hosted check uses the 36 public domain NASA photos of the demo event instead.
+The hosted check uses the 36 public domain NASA photos of the sample event instead.
 
 ## Accuracy (`accuracy.json`)
 
@@ -109,13 +109,13 @@ the data: HNSW finds its nearest candidates first and the `WHERE event_id = ?` f
 The app process with the hosted settings (128 MB heap, one face engine, one worker thread), on the development
 machine: 182 MB resident after start-up, 357 MB after the first photo was indexed (the face models are loaded
 into OpenCV's native memory on first use), 376 MB after 12 photos. Native Memory Tracking reported 229,721 kB
-committed by the JVM itself. Peak resident memory while indexing the 36 demo photos was between 467 and
+committed by the JVM itself. Peak resident memory while indexing the 36 sample photos was between 467 and
 493 MB across three flag combinations, which is why the hosted box gets a swap file.
 
-## Hosted demo (`hosted.json`)
+## Hosted site (`hosted.json`)
 
 `eval/hosted_check.py` run from outside against https://spotme.sites.tab.bot: it created an event, uploaded
-the 36 demo photos 2 at a time, waited for indexing, ran 24 timed searches (after 3 warm-up searches) with
+the 36 sample photos 2 at a time, waited for indexing, ran 24 timed searches (after 3 warm-up searches) with
 three sample selfies, then deleted the event.
 
 | Measure | Result |
@@ -149,7 +149,7 @@ composites above, so throughput numbers are not comparable with the development 
 | Errors | 0 server errors, health UP in all 30 samples (every 15 s during upload and indexing) |
 
 **Bug found: search got slow in a big event.** The first 678 answered searches spent p50 129.5 ms in SQL (p95
-170.9 ms), against 1.4 ms in the 36-photo demo event. Two causes in `SearchService`: after a few calls the JDBC
+170.9 ms), against 1.4 ms in the 36-photo sample event. Two causes in `SearchService`: after a few calls the JDBC
 driver switches to a server-side prepared statement, and Postgres then turned the selfie's text into a vector
 again for every face row; and every face of the event went through the join and the `GROUP BY` before the
 distance limit was applied. The fix makes the vector once (`WITH q AS MATERIALIZED`) and moves the distance limit
@@ -162,7 +162,7 @@ that ran before the fix returned exactly the same photos after it.
 | SQL search (server) | p50 129.5 ms, p95 170.9 ms | p50 7.3 ms, p95 12.2 ms |
 | Detect and embed (server) | p50 25.1 ms, p95 36.5 ms | p50 26.8 ms, p95 40.3 ms |
 
-After the fix, searching 11,251 photos is about as fast as searching the 36 demo photos was (`hosted.json`:
+After the fix, searching 11,251 photos is about as fast as searching the 36 sample photos was (`hosted.json`:
 p50 166.1 ms, p95 275.2 ms). The slowest request took 1270.0 ms. "Before" counts the 678 answered searches that ran
 before the fix was deployed; the run was then stopped and all 1,980 queries were run again on the fixed build. While photos were still being uploaded and indexed, 8 probe searches (one a minute) took
 p50 223.6 ms.
@@ -204,7 +204,7 @@ One limit showed up on the organizer side: the photo list returned only the newe
 page. The list now comes in pages of 500 with a "Load more" button. The event's counts and the guest search
 were never affected.
 
-The event is still on the hosted box. The test registered its own organizer account and did not touch the demo
+The event is still on the hosted box. The test registered its own organizer account and did not touch the sample
 event.
 
 ## Finding one person in the big event (`scale_person.json`)
@@ -351,7 +351,7 @@ python3 eval/run_eval.py accuracy                   # accuracy.json
 python3 eval/run_eval.py latency                    # latency.json
 python3 eval/ann_bench.py                           # ann_bench.json
 python3 eval/plot_accuracy.py                       # docs/images/accuracy.png
-scripts/fetch-demo-photos.sh && python3 eval/hosted_check.py   # hosted.json
+scripts/fetch-sample-photos.sh && python3 eval/hosted_check.py   # hosted.json
 # full LFW set against the hosted box (extract lfw.tgz into eval/data/scale/lfw first)
 python3 eval/scale_test.py prepare && python3 eval/scale_test.py upload
 python3 eval/scale_test.py search && python3 eval/scale_test.py summary   # scale.json

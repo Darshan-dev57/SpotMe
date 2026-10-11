@@ -107,7 +107,7 @@ Using search to find out whether a person is at an event, or to run many faces t
 - Other limits: login per email, ZIP downloads per guest, visitor invites per address. The address comes from
   Tomcat's forwarded-header handling, so a made-up `X-Forwarded-For` entry does not reset it. Tests:
   `AttendeeIntegrationTest.organizerLoginIsRateLimitedPerEmail`, `ZipDownloadIntegrationTest.zipsAreRateLimitedPerGuest`,
-  `DemoIntegrationTest.aMadeUpForwardedForEntryDoesNotDodgeTheLimit`.
+  `SampleEventIntegrationTest.aMadeUpForwardedForEntryDoesNotDodgeTheLimit`.
 - Gap: limits are kept in memory, per process.
 
 ### 6. Signed URL guessing

@@ -33,7 +33,7 @@ export that the same application serves, so in production a single process answe
 | `attendee` | The guest API: notice, consent, search, download as ZIP, wrong-match reports, removal requests, withdrawal |
 | `privacy` | `PurgeService`: deleting one photo or a whole event, files and vectors included |
 | `drive` | Google Drive folder import: link parsing, the locked-down HTTP client, the listing and per-photo jobs |
-| `demo` | The optional public demo event and its per-visitor invites |
+| `sample` | The optional public sample event and its per-visitor invites |
 | `eval` | An owner-only endpoint that returns raw distances, enabled only by the `eval` profile |
 | `config`, `common` | Settings (`spotme.*`), serving the web UI, error JSON, rate limiting, token helpers |
 
@@ -46,7 +46,7 @@ other files of [`db/migration`](../backend/src/main/resources/db/migration).
 | Table | Holds | Notes |
 |---|---|---|
 | `organizers` | email, display name, BCrypt hash | email is unique and stored lower case |
-| `events` | title, purpose notice + version, status, expiry, `deletion_epoch`, `demo` | status: `draft`, `published`, `deleting`, `purged`; expiry at most 90 days out |
+| `events` | title, purpose notice + version, status, expiry, `deletion_epoch`, `sample` | status: `draft`, `published`, `deleting`, `purged`; expiry at most 90 days out |
 | `memberships` | one row per invited guest: label, hash of the invite token, consent version, withdrawal, revocation | the invite token itself is never stored |
 | `sessions` | hash of a bearer token, organizer or membership, expiry | exactly one of the two owners is set (a `CHECK` constraint) |
 | `photos` | storage keys, SHA-256 of the uploaded bytes, size, status, `hidden_at`, `suppressed_at`, `is_public`, face count | `UNIQUE (event_id, content_sha256)` dedupes uploads |
@@ -185,7 +185,7 @@ The threats behind this table, and the test for each defence, are in [THREAT_MOD
 
 | Profile | Runs | Typical use |
 |---|---|---|
-| (default) | API, worker and sweepers in one process | local development, the hosted demo |
+| (default) | API, worker and sweepers in one process | local development, the hosted site |
 | `api` | HTTP only, `spotme.worker.enabled=false` | scale the API separately |
 | `worker` | job loop and sweepers, no web server | a separate indexing machine |
 | `eval` | adds the owner-only raw distance endpoint | the measurement scripts only |
@@ -196,8 +196,8 @@ environment variable (for example `SPOTME_WORKER_THREADS`).
 
 ## Hosted deployment
 
-The public demo runs on a single Debian 12 box with 473 MB of memory and 2 vCPUs, behind
-https://spotme.sites.tab.bot. `deploy/package.sh` builds a 33 MB folder (unpacked app, web UI, demo photos,
+The live site runs on a single Debian 12 box with 473 MB of memory and 2 vCPUs, behind
+https://spotme.sites.tab.bot. `deploy/package.sh` builds a 33 MB folder (unpacked app, web UI, sample photos,
 scripts) and `deploy/start.sh` runs on the box:
 
 1. adds a 1 GB swap file,
@@ -206,7 +206,7 @@ scripts) and `deploy/start.sh` runs on the box:
 3. downloads a Java 21 runtime (Eclipse Temurin), the OpenCV jar from Maven Central and the two face models,
    checking SHA-256 where the source publishes one,
 4. starts the app with one face engine, one worker thread, a 128 MB heap, a 16 megapixel cap, at most 2,000
-   photos per event and the demo event switched on.
+   photos per event and the sample event switched on.
 
 Every step checks what is already present, so a restart takes seconds.
 
