@@ -60,11 +60,19 @@ export function Results({
     });
   }
 
+  const allSelected = selected.size === photos.length;
+
   async function downloadZip() {
     setBusy(true);
     try {
-      const blob = await apiBlob("/api/attendee/download", { token, json: { photoIds: [...selected] } });
-      saveBlob(blob, `${notice.eventTitle.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-photos.zip`);
+      if (allSelected) {
+        // a short-lived link the browser downloads by itself, so even hundreds of photos never sit in memory
+        const link = await api<{ url: string }>("/api/attendee/download-link", { method: "POST", token });
+        window.location.assign(mediaUrl(link.url));
+      } else {
+        const blob = await apiBlob("/api/attendee/download", { token, json: { photoIds: [...selected] } });
+        saveBlob(blob, `${notice.eventTitle.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-photos.zip`);
+      }
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Download failed.");
     }
@@ -212,7 +220,8 @@ export function Results({
           {mode !== "remove" ? (
             <div className="sticky bottom-0 mt-6 -mx-5 flex flex-wrap items-center gap-3 border-t bg-background/95 px-5 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
               <Button size="lg" onClick={downloadZip} disabled={selected.size === 0 || busy}>
-                {busy ? <Spinner /> : <Download />} Download {selected.size > 0 ? plural(selected.size, "photo") : ""}
+                {busy ? <Spinner /> : <Download />}{" "}
+                {allSelected ? `Download all ${photos.length} (ZIP)` : `Download ${plural(selected.size, "photo")}`}
               </Button>
               <Button size="lg" variant="ghost" onClick={() => setMode("remove")}>
                 <Trash2 /> Remove me
