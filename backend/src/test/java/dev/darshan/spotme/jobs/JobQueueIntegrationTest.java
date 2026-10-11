@@ -49,6 +49,24 @@ class JobQueueIntegrationTest extends IntegrationTest {
         assertThat(queue.claim("w", 1, Duration.ofMinutes(1))).extracting(Job::kind).containsExactly(JobKind.DRIVE_FILE);
     }
 
+    /**
+     * Regression: with "WHERE id IN (SELECT ... LIMIT n FOR UPDATE SKIP LOCKED)" Postgres may run the
+     * subquery again for every row it updates when its statistics say the table is tiny (as right after the
+     * queue drained), and each run skips the rows it already took, so one claim could take every job.
+     */
+    @Test
+    void aClaimNeverTakesMoreThanItsLimitEvenWhenTheTableLooksEmpty() {
+        enqueue(1);
+        jdbc.update("UPDATE jobs SET state = 'succeeded'");
+        jdbc.execute("VACUUM ANALYZE jobs"); // the planner now believes the queue holds one finished job
+        enqueue(4);
+
+        assertThat(queue.claim("worker-A", 2, Duration.ofMinutes(1))).hasSize(2);
+        assertThat(queue.claim("worker-B", 1, Duration.ofMinutes(1))).hasSize(1);
+        assertThat(count("SELECT count(*) FROM jobs WHERE state = 'running'")).isEqualTo(3);
+        assertThat(count("SELECT count(*) FROM jobs WHERE state = 'queued'")).isEqualTo(1);
+    }
+
     @Test
     void parallelWorkersNeverClaimTheSameJob() throws Exception {
         enqueue(200);
