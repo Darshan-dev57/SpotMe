@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
-import { Match, mediaUrl } from "@/lib/api";
+import { GuestPhoto, mediaUrl } from "@/lib/api";
 
 /**
  * Full-screen look at one matched photo, so a guest can check it is really them before
@@ -14,7 +14,7 @@ export function PhotoViewer({
   onIndex,
   onClose,
 }: {
-  photos: Match[];
+  photos: GuestPhoto[];
   index: number;
   onIndex: (i: number) => void;
   onClose: () => void;

@@ -155,6 +155,39 @@ public class AttendeeController {
         return ResponseEntity.ok(body);
     }
 
+    /** Most public photos one page of the guest's "Event photos" section returns. */
+    static final int EVENT_PHOTOS_PAGE = 60;
+
+    /**
+     * The photos the organizer shared with everyone (venue, stage, crowd), newest first.
+     * Private photos never appear here; they only come back to guests whose face matches.
+     */
+    @GetMapping("/api/attendee/event-photos")
+    public Map<String, Object> eventPhotos(@RequestParam(defaultValue = "0") int offset, HttpServletRequest http) {
+        Principal.Attendee me = AuthInterceptor.attendee(http);
+        requirePublished(me.eventId());
+        if (offset < 0) {
+            throw ApiException.badRequest("bad_page", "offset must be 0 or more.");
+        }
+        String visible = "event_id = ? AND is_public AND status = 'ready' AND hidden_at IS NULL AND suppressed_at IS NULL";
+        Long total = jdbc.queryForObject("SELECT count(*) FROM photos WHERE " + visible, Long.class, me.eventId());
+        List<UUID> ids = jdbc.queryForList("SELECT id FROM photos WHERE " + visible
+                + " ORDER BY created_at DESC, id LIMIT ? OFFSET ?", UUID.class, me.eventId(), EVENT_PHOTOS_PAGE, offset);
+        String subject = "m:" + me.membershipId();
+        List<Map<String, Object>> photos = new ArrayList<>();
+        for (UUID id : ids) {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("id", id);
+            p.put("thumbUrl", signer.link(id, "thumb", subject));
+            p.put("downloadUrl", signer.link(id, "original", subject));
+            photos.add(p);
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("total", total);
+        body.put("photos", photos);
+        return body;
+    }
+
     // ---------- after the search ----------
 
     /** Hides one photo from this attendee's results and flags it for the organizer. */

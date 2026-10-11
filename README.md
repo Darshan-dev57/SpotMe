@@ -229,12 +229,14 @@ query, pool size and memory limits were tuned on the hosted box. Details in
 - JPEG, PNG, HEIC/HEIF, WebP, AVIF, TIFF, BMP and GIF; every photo is stored as a clean JPEG
 - Import a public Google Drive folder by pasting its link: no API key, subfolders included, runs as
   background jobs with progress
+- Photos are private by default; select venue and crowd shots in bulk and make them public for every guest
 - One private invite link per guest, with revoke
 - Review queue for removal requests: delete permanently or keep
 
 **Guests**
 - Consent to a versioned notice before searching
 - One selfie (camera or gallery), results in under a second
+- Their own matches, plus an "Event photos" section with the photos the organizer shared with everyone
 - Full-screen viewer, single downloads or a ZIP of selected photos
 - Opt-in "notify me": a private link that shows new photos of you as the organizer adds them
 - "Not me" reports and consent withdrawal
