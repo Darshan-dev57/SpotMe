@@ -94,6 +94,22 @@ public class DemoService {
         log.info("Created demo event {} with {} photos queued for indexing", eventId, added);
     }
 
+    /**
+     * In the demo, photos with no faces in them (the rocket, the launch pad) are shared with every
+     * visitor, so the "Event photos" section shows what an organizer would use it for.
+     */
+    @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
+    public void shareSceneryPhotos() {
+        if (!enabled()) {
+            return;
+        }
+        jdbc.update("""
+                UPDATE photos SET is_public = true
+                WHERE status = 'ready' AND face_count = 0 AND NOT is_public
+                  AND event_id IN (SELECT id FROM events WHERE demo AND status = 'published')
+                """);
+    }
+
     /** A personal invite to the demo event for one visitor. Returns the raw invite token. */
     public String newVisitorInvite() {
         UUID eventId = liveEvent().orElseThrow(() -> ApiException.notFound("Demo event"));

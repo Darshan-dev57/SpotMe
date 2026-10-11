@@ -101,6 +101,7 @@ export type EventDetail = {
   counts: Counts;
   faces: number;
   hidden: number;
+  publicPhotos: number;
   pendingRemovals: number;
   worker: { active: boolean; lastSeen: string | null };
 };
@@ -112,6 +113,7 @@ export type Photo = {
   errorCode: string | null;
   hidden: boolean;
   suppressed: boolean;
+  public: boolean;
   wrongMatchReports: number;
   thumbUrl?: string;
 };
@@ -147,8 +149,12 @@ export type Notice = {
   demo: boolean;
 };
 
+/** A photo a guest may see, with short-lived signed links. */
+export type GuestPhoto = { id: string; thumbUrl: string; downloadUrl: string };
 /** faceId: the face that matched; solo: the guest is the only face in the photo. */
-export type Match = { id: string; thumbUrl: string; downloadUrl: string; faceId: number; solo: boolean };
+export type Match = GuestPhoto & { faceId: number; solo: boolean };
+/** Photos the organizer shared with every guest of the event. */
+export type EventPhotos = { total: number; photos: GuestPhoto[] };
 export type SearchResult = { count: number; photos: Match[]; stillIndexing: boolean };
 
 export type RemovalCreated = {

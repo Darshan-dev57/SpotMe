@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, EyeOff, Flag, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, EyeOff, Flag, Globe, Loader2, Lock, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { ApiError, Photo, api, mediaUrl } from "@/lib/api";
 import { photoError } from "@/lib/format";
+import { chunk } from "@/lib/photos";
 import { cn } from "@/lib/utils";
 
-type Filter = "all" | "ready" | "working" | "failed" | "hidden";
+type Filter = "all" | "ready" | "public" | "working" | "failed" | "hidden";
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "ready", label: "Ready" },
+  { key: "public", label: "Public" },
   { key: "working", label: "In progress" },
   { key: "failed", label: "Failed" },
   { key: "hidden", label: "Hidden" },
@@ -21,6 +23,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 function matches(p: Photo, f: Filter) {
   if (f === "ready") return p.status === "ready" && !p.hidden && !p.suppressed;
+  if (f === "public") return p.public;
   if (f === "working") return p.status === "queued" || p.status === "processing";
   if (f === "failed") return p.status === "failed";
   if (f === "hidden") return p.hidden || p.suppressed;
@@ -41,7 +44,51 @@ export function PhotoGrid({
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<string | null>(null);
+  // bulk mode: tapping a photo picks it instead of opening its actions
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
   const shown = photos.filter((p) => matches(p, filter));
+
+  function pick(id: string) {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function stopSelecting() {
+    setSelecting(false);
+    setPicked(new Set());
+  }
+
+  async function setVisibility(visibility: "public" | "private") {
+    const ids = [...picked];
+    setSaving(true);
+    try {
+      let updated = 0;
+      // the server takes up to 2,000 ids per request
+      for (const part of chunk(ids, 2000)) {
+        const res = await api<{ updated: number }>(`/api/events/${eventId}/photos/visibility`, {
+          token,
+          json: { photoIds: part, visibility },
+        });
+        updated += res.updated;
+      }
+      toast.success(
+        visibility === "public"
+          ? `${updated} ${updated === 1 ? "photo is" : "photos are"} now shown to every guest.`
+          : `${updated} ${updated === 1 ? "photo is" : "photos are"} private again.`,
+      );
+      stopSelecting();
+      onChanged();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Could not change the photos.");
+    }
+    setSaving(false);
+  }
 
   async function act(photo: Photo, action: "hide" | "unhide" | "retry" | "delete") {
     try {
@@ -71,6 +118,36 @@ export function PhotoGrid({
 
   return (
     <div className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Photos are private: a guest only sees the ones they are in. Make venue and crowd shots public to show them to
+          everyone.
+        </p>
+        {!selecting && (
+          <Button variant="outline" size="sm" onClick={() => setSelecting(true)}>
+            <Check /> Select
+          </Button>
+        )}
+      </div>
+      {selecting && (
+        <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-lg border bg-background/95 p-2 backdrop-blur">
+          <span className="tabular px-1 text-sm font-medium">{picked.size} selected</span>
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Set(shown.map((p) => p.id)))}>
+            Select all {shown.length}
+          </Button>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setVisibility("public")} disabled={picked.size === 0 || saving}>
+              <Globe /> Make public
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setVisibility("private")} disabled={picked.size === 0 || saving}>
+              <Lock /> Make private
+            </Button>
+            <Button size="sm" variant="ghost" onClick={stopSelecting}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Filter photos">
         {FILTERS.map((f) => {
           const n = photos.filter((p) => matches(p, f.key)).length;
@@ -96,9 +173,13 @@ export function PhotoGrid({
           <li key={p.id} className="relative">
             <button
               type="button"
-              onClick={() => setSelected(selected === p.id ? null : p.id)}
-              className="group block aspect-square w-full overflow-hidden rounded-md bg-muted"
-              aria-label={`Photo, ${p.status}`}
+              onClick={() => (selecting ? pick(p.id) : setSelected(selected === p.id ? null : p.id))}
+              className={cn(
+                "group block aspect-square w-full overflow-hidden rounded-md bg-muted ring-offset-2 ring-offset-background",
+                selecting && picked.has(p.id) && "ring-[3px] ring-primary",
+              )}
+              aria-label={`Photo, ${p.status}${p.public ? ", public" : ""}`}
+              aria-pressed={selecting ? picked.has(p.id) : undefined}
             >
               {p.thumbUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -114,8 +195,18 @@ export function PhotoGrid({
                 />
               )}
               <PhotoBadge photo={p} />
+              {p.public && (
+                <span className="absolute top-1 right-1 flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-[11px] text-primary-foreground">
+                  <Globe className="size-3" /> Public
+                </span>
+              )}
+              {selecting && picked.has(p.id) && (
+                <span className="absolute right-1 bottom-1 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="size-4" />
+                </span>
+              )}
             </button>
-            {selected === p.id && (
+            {!selecting && selected === p.id && (
               <div className="absolute inset-x-1 bottom-1 z-10 flex flex-wrap gap-1 rounded-md bg-foreground/90 p-1 backdrop-blur-sm">
                 {p.status === "failed" && (
                   <Button size="sm" variant="secondary" onClick={() => act(p, "retry")}>
