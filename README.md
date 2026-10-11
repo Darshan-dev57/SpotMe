@@ -71,60 +71,119 @@ A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotm
 
 ```mermaid
 flowchart TD
-    users(("Organizer / Guest")) --> ui["Next.js static UI<br/>served by Spring"]
-    ui --> api
 
-    subgraph app["Spring Boot application (Java 21)"]
-        api["REST API<br/>auth, hashed tokens, rate limits"]
-        events["Events, invites,<br/>consent, removal"]
-        intake["PhotoIntake<br/>magic bytes, pixel cap, JPEG re-encode,<br/>SHA-256 dedupe"]
-        search["Event-scoped search<br/>signed photo links"]
-        worker["Job worker<br/>claims by priority, lease + token"]
-        index["INDEX_PHOTO"]
-        drivejobs["DRIVE_LIST / DRIVE_FILE<br/>one photo per job"]
-        purge["PURGE_PHOTO / PURGE_EVENT"]
-        face["Face module<br/>pretrained YuNet + SFace"]
-    end
+subgraph group_web["Web experience"]
+  node_organizer["Organizer console<br/>[page.tsx]"]
+  node_guest["Guest join and results<br/>[page.tsx]"]
+end
 
-    subgraph pg["PostgreSQL 16 + pgvector"]
-        queue[("jobs<br/>FOR UPDATE SKIP LOCKED")]
-        tables[("events, photos, sessions,<br/>faces vector(128)")]
-    end
-    files[("Photo files<br/>local disk")]
-    gdrive["Google Drive<br/>public folder"]
+subgraph group_events["Events and access"]
+  node_api["REST API"]
+  node_eventmgmt["Event and invites"]
+  node_attendees["Consent and access"]
+  node_auth["Sessions and auth"]
+  node_session["Session service"]
+end
 
-    api --> events
-    api -->|"upload, folder"| intake
-    api -->|"Drive link"| queue
-    api --> search
-    events --> tables
-    events -->|"deletion"| queue
-    intake -->|"photo row + job,<br/>one transaction"| queue
-    intake --> files
-    worker -->|"claim"| queue
-    worker --> index
-    worker --> drivejobs
-    worker --> purge
-    drivejobs -->|"https, Google hosts only"| gdrive
-    drivejobs -->|"same path as uploads"| intake
-    index --> face
-    index -->|"face vectors"| tables
-    search --> face
-    search -->|"cosine distance,<br/>one event"| tables
-    purge --> files
-    purge --> tables
+subgraph group_ingest["Photo ingestion"]
+  node_uploads["Photo upload"]
+  node_intake["Validate and encode<br/>[PhotoIntake.java]"]
+  node_drive["Drive import"]
+  node_driveworker["Drive import jobs"]
+  node_storage[("Photo files<br/>[PhotoStorage.java]")]
+end
 
-    classDef core fill:#dbeafe,stroke:#2563eb,color:#172554
-    classDef store fill:#fef3c7,stroke:#d97706,color:#78350f
-    classDef small fill:#f1f5f9,stroke:#94a3b8,color:#334155
-    classDef outside fill:#e0e7ff,stroke:#4f46e5,color:#312e81
-    class ui,api,events,intake,search,worker,index,drivejobs,purge core
-    class queue,tables,files store
-    class face small
-    class users,gdrive outside
+subgraph group_matching["Matching and jobs"]
+  node_jobs[("Durable job queue<br/>[JobQueue.java]")]
+  node_worker["Job workers<br/>[JobWorker.java]"]
+  node_index["Photo indexing"]
+  node_face["Face detection and vectors<br/>[FaceEngine.java]"]
+  node_search["Event-scoped search<br/>[SearchService.java]"]
+  node_results["Signed photo access<br/>[MediaSigner.java]"]
+  node_alerts["New-photo alerts"]
+end
+
+subgraph group_privacy["Privacy lifecycle"]
+  node_removal["Removal requests"]
+  node_purge["Delete and expire<br/>[PurgeService.java]"]
+end
+
+node_db[("PostgreSQL + pgvector")]
+node_organizer_actor(("Organizer"))
+node_guest_actor(("Guest"))
+node_drive_service["Google Drive"]
+
+node_organizer_actor -->|"manages event"| node_organizer
+node_guest_actor -->|"joins and searches"| node_guest
+node_organizer -.->|"uses"| node_api
+node_guest -.->|"uses"| node_api
+node_api -.->|"routes requests"| node_eventmgmt
+node_api -.->|"routes requests"| node_attendees
+node_api -.->|"routes requests"| node_uploads
+node_api -.->|"routes requests"| node_drive
+node_api -.->|"routes requests"| node_search
+node_api -.->|"routes requests"| node_removal
+node_auth -->|"resolves token"| node_session
+node_session -->|"reads and writes sessions"| node_db
+node_uploads -.->|"validates photos"| node_intake
+node_intake -.->|"stores clean images"| node_storage
+node_intake -->|"photo row + index job"| node_jobs
+node_drive -->|"queues listing"| node_jobs
+node_driveworker -.->|"lists and downloads"| node_drive_service
+node_driveworker -.->|"same checks as uploads"| node_intake
+node_worker -->|"claims work"| node_jobs
+node_worker -.->|"dispatches jobs"| node_index
+node_worker -.->|"dispatches jobs"| node_driveworker
+node_worker -.->|"dispatches jobs"| node_purge
+node_index -.->|"embeds faces"| node_face
+node_index -.->|"saves face vectors"| node_db
+node_search -->|"embeds selfie"| node_face
+node_search -->|"queries vectors"| node_db
+node_search -.->|"returns matches"| node_results
+node_results -.->|"signs media links"| node_storage
+node_alerts -->|"finds new matches"| node_search
+node_removal -->|"schedules deletion"| node_purge
+node_purge -->|"queues and completes"| node_jobs
+node_purge -->|"deletes files"| node_storage
+node_purge -->|"deletes vectors and rows"| node_db
+
+click node_organizer "https://github.com/darshan-dev57/spotme/blob/main/web/src/app/organizer/event/page.tsx"
+click node_guest "https://github.com/darshan-dev57/spotme/blob/main/web/src/app/join/page.tsx"
+click node_api "https://github.com/darshan-dev57/spotme/tree/main/backend/src/main/java/dev/darshan/spotme"
+click node_eventmgmt "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/event/EventController.java"
+click node_attendees "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/attendee/AttendeeController.java"
+click node_auth "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/auth/AuthInterceptor.java"
+click node_session "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/auth/SessionService.java"
+click node_uploads "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/media/UploadController.java"
+click node_intake "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/media/PhotoIntake.java"
+click node_drive "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/drive/DriveImportService.java"
+click node_driveworker "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/drive/DriveImportHandler.java"
+click node_storage "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/media/PhotoStorage.java"
+click node_jobs "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/jobs/JobQueue.java"
+click node_worker "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/jobs/JobWorker.java"
+click node_index "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/jobs/IndexPhotoHandler.java"
+click node_face "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/face/FaceEngine.java"
+click node_search "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/search/SearchService.java"
+click node_results "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/media/MediaSigner.java"
+click node_alerts "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/alerts/AlertController.java"
+click node_removal "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/removal/RemovalService.java"
+click node_purge "https://github.com/darshan-dev57/spotme/blob/main/backend/src/main/java/dev/darshan/spotme/privacy/PurgeService.java"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_organizer,node_guest toneBlue
+class node_api,node_eventmgmt,node_attendees,node_auth,node_session,node_db toneAmber
+class node_uploads,node_intake,node_drive,node_driveworker,node_storage toneMint
+class node_jobs,node_worker,node_index,node_face,node_search,node_results,node_alerts toneRose
+class node_removal,node_purge,node_organizer_actor,node_guest_actor,node_drive_service toneIndigo
 ```
 
-<sub>Diagram generated with [GitDiagram](https://gitdiagram.com/Darshan-dev57/spotme), edited by hand.</sub>
+<sub>Diagram generated with [GitDiagram](https://gitdiagram.com/Darshan-dev57/spotme). Its layout and labels are kept; four arrows were corrected against the code and three missing ones added (the raw output is in [docs/diagrams/gitdiagram-raw.mmd](docs/diagrams/gitdiagram-raw.mmd)). Boxes link to their source files.</sub>
 
 One Spring Boot application holds all of the logic: the REST API, the job worker, the ingestion pipeline,
 search and the privacy rules. The web UI is a static Next.js export served by the same application, so
