@@ -267,6 +267,15 @@ Every number below comes from a JSON file in [`eval/out/`](eval/out); how each w
 [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md). Accuracy uses LFW, a public face benchmark, arranged into a
 438-photo test event.
 
+At the live threshold 0.51, on the 11,251-photo event (full table, with results by threshold, in
+[docs/EVALUATION.md](docs/EVALUATION.md)):
+
+| Precision | Recall | F1 | False positive rate | False negative rate | Search p50 / p95 | Indexing | Worker recovery |
+|---|---|---|---|---|---|---|---|
+| 0.986 | 0.863 | 0.920 | 0.037 (strangers who got any photo) | 0.137 | 163.1 / 246.9 ms | 1,446.7 photos/min | 60.4 s |
+
+The LFW-based synthetic evaluation is useful for reproducible comparison, but it is not representative of all real event conditions such as blur, side profiles, poor lighting, masks, or crowded photos.
+
 | What | Result |
 |---|---|
 | Scale test upload, hosted box (2 vCPUs, 473 MB RAM) | 11,253 photos in 456.3 s (1,479.6 per minute), 0 failed, 0 server errors; queue empty 10 s after the last upload |
@@ -418,6 +427,7 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md): eight threats, the defence for each and the test that proves it
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md): every metric, where it is counted, and what the logs never contain
+- [docs/EVALUATION.md](docs/EVALUATION.md): precision, recall, F1, error rates, latency, throughput and recovery, with results by threshold
 - [docs/STORAGE.md](docs/STORAGE.md): photos on local disk or in an S3-compatible bucket (MinIO), and how deletion works on both
 - [SECURITY.md](SECURITY.md): how to report a security problem
 
