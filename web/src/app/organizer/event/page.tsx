@@ -17,8 +17,9 @@ import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ApiError, EventDetail, Photo, api } from "@/lib/api";
+import { ApiError, Counts, EventDetail, Photo, api } from "@/lib/api";
 import { daysLeft, formatDate, plural } from "@/lib/format";
+import { useLiveProgress } from "@/lib/progress";
 
 // photos per request; "Load more" asks for the next page
 const PAGE = 500;
@@ -72,13 +73,21 @@ function EventDashboard() {
     };
   }, [session, id, router, version]);
 
-  // poll while the worker still has photos of this event to process
-  const working = !!event && event.counts.queued + event.counts.processing > 0;
+  // live counts from the server's event stream (or polling when the stream can't be opened)
+  const { progress, mode } = useLiveProgress(id, session?.token);
+
+  // when photos finish, refresh the photo grid, at most every 5 seconds while indexing runs
+  const finished = progress ? progress.counts.ready + progress.counts.failed : null;
+  const lastRefresh = useRef(0);
   useEffect(() => {
-    if (!working) return;
-    const t = setInterval(load, 2000);
-    return () => clearInterval(t);
-  }, [working, load]);
+    if (finished === null) return;
+    const wait = Math.max(0, lastRefresh.current + 5000 - Date.now());
+    const t = setTimeout(() => {
+      lastRefresh.current = Date.now();
+      load();
+    }, wait);
+    return () => clearTimeout(t);
+  }, [finished, load]);
 
   async function loadMore() {
     if (!session) return;
@@ -108,6 +117,7 @@ function EventDashboard() {
   }
 
   if (!session) return null;
+  const counts = progress?.counts ?? event?.counts;
 
   return (
     <>
@@ -137,7 +147,7 @@ function EventDashboard() {
                 </p>
               </div>
               {event.status === "draft" && (
-                <Button size="lg" onClick={publish} disabled={event.counts.ready === 0}>
+                <Button size="lg" onClick={publish} disabled={(counts ?? event.counts).ready === 0}>
                   <Send /> Publish to guests
                 </Button>
               )}
@@ -145,9 +155,10 @@ function EventDashboard() {
 
             <div className="mt-8 rounded-xl border bg-card p-4 sm:p-5">
               <Pipeline
-                counts={event.counts}
-                hidden={event.hidden}
-                worker={event.worker}
+                counts={counts ?? event.counts}
+                hidden={progress?.hidden ?? event.hidden}
+                worker={progress?.worker ?? event.worker}
+                live={mode}
               />
             </div>
 
@@ -170,13 +181,13 @@ function EventDashboard() {
                 <Uploader eventId={event.id} token={session.token} onUploaded={load} />
                 <DriveImporter eventId={event.id} token={session.token} onImported={load} />
                 <PhotoGrid photos={photos} eventId={event.id} token={session.token} onChanged={load} />
-                {photos.length < total(event) && (
+                {photos.length < total(counts ?? event.counts) && (
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
                       Load more
                     </Button>
                     <span className="tabular text-sm text-muted-foreground">
-                      {photos.length.toLocaleString()} of {total(event).toLocaleString()} shown
+                      {photos.length.toLocaleString()} of {total(counts ?? event.counts).toLocaleString()} shown
                     </span>
                   </div>
                 )}
@@ -198,7 +209,6 @@ function EventDashboard() {
   );
 }
 
-function total(event: EventDetail) {
-  const c = event.counts;
+function total(c: Counts) {
   return c.queued + c.processing + c.ready + c.failed;
 }
