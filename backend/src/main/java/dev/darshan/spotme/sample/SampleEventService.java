@@ -1,4 +1,4 @@
-package dev.darshan.spotme.demo;
+package dev.darshan.spotme.sample;
 
 import dev.darshan.spotme.common.ApiException;
 import dev.darshan.spotme.common.Tokens;
@@ -26,59 +26,59 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
- * The public demo. When spotme.demo.enabled is on, there is always one published demo event,
- * filled with the photos in spotme.demo.photos-dir. Visitors get their own invite to it, so each
+ * The public sample event. When spotme.sample.enabled is on, there is always one published sample event,
+ * filled with the photos in spotme.sample.photos-dir. Visitors get their own invite to it, so each
  * visitor still reads the notice, consents and can withdraw like a real guest.
  *
- * The demo event follows the normal rules: it expires after 90 days and is purged by the
+ * The sample event follows the normal rules: it expires after 90 days and is purged by the
  * expiry sweeper, and a fresh one is created a day before that.
  */
 @Service
-public class DemoService {
+public class SampleEventService {
 
-    static final String ORGANIZER_EMAIL = "demo@spotme.invalid";
-    static final String TITLE = "Demo-2 launch week";
-    static final String NOTICE = "This is the SpotMe demo. The photos are public domain NASA photos of the "
-            + "Demo-2 launch week in May 2020. Your selfie is compared in memory and never saved. "
-            + "This demo invite only works for this event and ends when you leave or the event expires.";
+    static final String ORGANIZER_EMAIL = "sample@spotme.invalid";
+    static final String TITLE = "Crew Dragon launch week";
+    static final String NOTICE = "This is the SpotMe sample event. The photos are public domain NASA photos of the "
+            + "Crew Dragon launch week in May 2020. Your selfie is compared in memory and never saved. "
+            + "This invite only works for this event and ends when you leave or the event expires.";
 
-    private static final Logger log = LoggerFactory.getLogger(DemoService.class);
+    private static final Logger log = LoggerFactory.getLogger(SampleEventService.class);
     private static final Duration LIFETIME = Duration.ofDays(90);
 
     private final JdbcTemplate jdbc;
     private final PhotoIntake intake;
-    private final SpotMeProperties.Demo settings;
+    private final SpotMeProperties.Sample settings;
 
-    public DemoService(JdbcTemplate jdbc, PhotoIntake intake, SpotMeProperties props) {
+    public SampleEventService(JdbcTemplate jdbc, PhotoIntake intake, SpotMeProperties props) {
         this.jdbc = jdbc;
         this.intake = intake;
-        this.settings = props.demo();
+        this.settings = props.sample();
     }
 
     public boolean enabled() {
         return settings != null && settings.enabled();
     }
 
-    /** The live demo event: published and not expiring within a day. */
+    /** The live sample event: published and not expiring within a day. */
     public Optional<UUID> liveEvent() {
         List<UUID> ids = jdbc.queryForList("""
                 SELECT id FROM events
-                WHERE demo AND status = 'published' AND expires_at > now() + interval '1 day'
+                WHERE sample AND status = 'published' AND expires_at > now() + interval '1 day'
                 ORDER BY created_at DESC LIMIT 1
                 """, UUID.class);
         return ids.stream().findFirst();
     }
 
-    /** Runs at startup and every few hours, so a demo event always exists. */
+    /** Runs at startup and every few hours, so a sample event always exists. */
     @EventListener(ApplicationReadyEvent.class)
     @Scheduled(fixedDelay = 6 * 3600 * 1000, initialDelay = 6 * 3600 * 1000)
-    public void ensureDemoEvent() {
+    public void ensureSampleEvent() {
         if (!enabled() || liveEvent().isPresent()) {
             return;
         }
-        List<Path> photos = demoPhotos();
+        List<Path> photos = samplePhotos();
         if (photos.isEmpty()) {
-            log.warn("Demo is on but {} has no .jpg photos, so no demo event was created", settings.photosDir());
+            log.warn("Sample event is on but {} has no .jpg photos, so no sample event was created", settings.photosDir());
             return;
         }
         UUID eventId = createEvent();
@@ -88,14 +88,14 @@ public class DemoService {
                 intake.add(eventId, Files.readAllBytes(photo));
                 added++;
             } catch (IOException | ApiException e) {
-                log.warn("Skipped demo photo {}: {}", photo.getFileName(), e.getMessage());
+                log.warn("Skipped sample photo {}: {}", photo.getFileName(), e.getMessage());
             }
         }
-        log.info("Created demo event {} with {} photos queued for indexing", eventId, added);
+        log.info("Created sample event {} with {} photos queued for indexing", eventId, added);
     }
 
     /**
-     * In the demo, photos with no faces in them (the rocket, the launch pad) are shared with every
+     * In the sample event, photos with no faces in them (the rocket, the launch pad) are shared with every
      * visitor, so the "Event photos" section shows what an organizer would use it for.
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
@@ -106,22 +106,22 @@ public class DemoService {
         jdbc.update("""
                 UPDATE photos SET is_public = true
                 WHERE status = 'ready' AND face_count = 0 AND NOT is_public
-                  AND event_id IN (SELECT id FROM events WHERE demo AND status = 'published')
+                  AND event_id IN (SELECT id FROM events WHERE sample AND status = 'published')
                 """);
     }
 
-    /** A personal invite to the demo event for one visitor. Returns the raw invite token. */
+    /** A personal invite to the sample event for one visitor. Returns the raw invite token. */
     public String newVisitorInvite() {
-        UUID eventId = liveEvent().orElseThrow(() -> ApiException.notFound("Demo event"));
+        UUID eventId = liveEvent().orElseThrow(() -> ApiException.notFound("Sample event"));
         String token = Tokens.newToken();
-        jdbc.update("INSERT INTO memberships (id, event_id, label, invite_token_hash) VALUES (?, ?, 'Demo visitor', ?)",
+        jdbc.update("INSERT INTO memberships (id, event_id, label, invite_token_hash) VALUES (?, ?, 'Visitor', ?)",
                 UUID.randomUUID(), eventId, Tokens.sha256Hex(token));
         return token;
     }
 
     /** Title and progress for the landing page. */
     public Map<String, Object> summary() {
-        UUID eventId = liveEvent().orElseThrow(() -> ApiException.notFound("Demo event"));
+        UUID eventId = liveEvent().orElseThrow(() -> ApiException.notFound("Sample event"));
         return jdbc.queryForMap("""
                 SELECT title,
                        count(p.id) FILTER (WHERE p.status <> 'purged') AS "photoCount",
@@ -137,29 +137,29 @@ public class DemoService {
         UUID id = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO events (id, organizer_id, title, purpose_notice, status, consent_attested_at, expires_at,
-                                    published_at, demo)
+                                    published_at, sample)
                 VALUES (?, ?, ?, ?, 'published', now(), ?, now(), true)
                 """, id, organizerId, TITLE, NOTICE, Timestamp.from(Instant.now().plus(LIFETIME)));
         return id;
     }
 
-    /** Nobody signs in as the demo organizer: the password is random and thrown away. */
+    /** Nobody signs in as the sample organizer: the password is random and thrown away. */
     private UUID createOrganizer() {
         UUID id = UUID.randomUUID();
         String password = new BCryptPasswordEncoder().encode(Tokens.newToken());
-        jdbc.update("INSERT INTO organizers (id, email, display_name, password_hash) VALUES (?, ?, 'SpotMe demo', ?)",
+        jdbc.update("INSERT INTO organizers (id, email, display_name, password_hash) VALUES (?, ?, 'SpotMe sample', ?)",
                 id, ORGANIZER_EMAIL, password);
         return id;
     }
 
-    private List<Path> demoPhotos() {
+    private List<Path> samplePhotos() {
         if (settings.photosDir() == null || settings.photosDir().isBlank()) {
             return List.of();
         }
         try (Stream<Path> files = Files.list(Path.of(settings.photosDir()))) {
             return files.filter(f -> f.getFileName().toString().toLowerCase().endsWith(".jpg")).sorted().toList();
         } catch (IOException e) {
-            log.warn("Could not read demo photos from {}: {}", settings.photosDir(), e.getMessage());
+            log.warn("Could not read sample photos from {}: {}", settings.photosDir(), e.getMessage());
             return List.of();
         }
     }

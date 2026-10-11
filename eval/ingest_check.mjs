@@ -1,4 +1,4 @@
-// Live check of the ingestion paths against a running SpotMe (default: the hosted demo).
+// Live check of the ingestion paths against a running SpotMe (default: the live site).
 //
 //   npm i playwright-core   (once, anywhere on NODE_PATH; needs a Chromium binary)
 //   SPOTME_API=https://spotme.sites.tab.bot FOLDER=/path/to/folder SELFIE=behnken.jpg \
