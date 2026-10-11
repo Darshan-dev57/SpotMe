@@ -1,6 +1,7 @@
 package dev.darshan.spotme.jobs;
 
 import dev.darshan.spotme.config.SpotMeProperties;
+import dev.darshan.spotme.drive.DriveImportHandler;
 import dev.darshan.spotme.privacy.PurgeService;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ public class JobWorker {
     private final JobQueue queue;
     private final IndexPhotoHandler indexHandler;
     private final PurgeService purgeService;
+    private final DriveImportHandler driveHandler;
     private final JdbcTemplate jdbc;
     private final SpotMeProperties.Worker config;
     private final String workerId;
@@ -36,10 +38,11 @@ public class JobWorker {
     private final List<Thread> threads = new ArrayList<>();
 
     public JobWorker(JobQueue queue, IndexPhotoHandler indexHandler, PurgeService purgeService,
-                     JdbcTemplate jdbc, SpotMeProperties props) {
+                     DriveImportHandler driveHandler, JdbcTemplate jdbc, SpotMeProperties props) {
         this.queue = queue;
         this.indexHandler = indexHandler;
         this.purgeService = purgeService;
+        this.driveHandler = driveHandler;
         this.jdbc = jdbc;
         this.config = props.worker();
         // "pid@host" is enough to tell workers apart in the jobs table
@@ -121,6 +124,8 @@ public class JobWorker {
                     purgeService.purgeEvent(job);
                     yield "purged";
                 }
+                case DRIVE_LIST -> driveHandler.list(job);
+                case DRIVE_FILE -> driveHandler.file(job);
             };
             done.incrementAndGet();
             jdbc.update("UPDATE worker_heartbeats SET last_seen = now(), jobs_done = jobs_done + 1 WHERE worker_id = ?", workerId);
@@ -135,8 +140,14 @@ public class JobWorker {
         } catch (Exception e) {
             String code = e.getClass().getSimpleName();
             String state = queue.fail(job, code, false);
-            if ("failed".equals(state) && job.kind() == JobKind.INDEX_PHOTO) {
-                indexHandler.markFailed(job.targetId(), "processing_error");
+            if ("failed".equals(state)) {
+                switch (job.kind()) {
+                    case INDEX_PHOTO -> indexHandler.markFailed(job.targetId(), "processing_error");
+                    case DRIVE_FILE -> driveHandler.markFileFailed(job.targetId(), "download_failed");
+                    case DRIVE_LIST -> driveHandler.markImportFailed(job.targetId(), "listing_failed");
+                    default -> {
+                    }
+                }
             }
             log.warn("Job {} ({}) attempt {} failed: {}", job.id(), job.kind(), job.attempts(), code);
             return "retry";

@@ -67,6 +67,8 @@ process plus PostgreSQL. The reasoning behind each choice is in [docs/DECISIONS.
 - Upload photos or a whole folder (subfolders included, drag and drop works too), 4 at a time, with duplicate
   detection and live indexing progress
 - JPEG, PNG, HEIC/HEIF, WebP, AVIF, TIFF, BMP and GIF; every photo is stored as a clean JPEG
+- Import a public Google Drive folder by pasting its link: no API key, subfolders included, runs as
+  background jobs with progress
 - One private invite link per guest, with revoke
 - Review queue for removal requests: delete permanently or keep
 
