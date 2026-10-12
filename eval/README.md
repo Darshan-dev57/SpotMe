@@ -60,7 +60,7 @@ not committed. Results: `eval/out/erase_test.json` and `docs/MEASUREMENTS.md`.
 
 ## Ingestion check
 
-`ingest_check.mjs` checks the newer ways photos come in, against a running app (the hosted demo by default):
+`ingest_check.mjs` checks the newer ways photos come in, against a running app (the live site by default):
 a folder picked in the real organizer page with headless Chromium (formats, subfolders, non-photo files, the
 pixel-cap retry), then a public Google Drive folder imported over the API with the box's memory sampled.
 Needs Node 20 and `playwright-core` with a Chromium binary. Results: `eval/out/ingest_live.json`.

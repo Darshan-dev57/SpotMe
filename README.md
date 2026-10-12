@@ -9,9 +9,9 @@ with pgvector, an ingestion pipeline that never trusts its input, organizer and 
 flows with deletion that really deletes, and measurements on a real 473 MB server. Face matching is one module
 that runs two pretrained OpenCV models as a library; nothing is trained.
 
-**Live demo:** https://spotme.sites.tab.bot (tap *Try the demo*, then pick a sample selfie)
+**Live:** https://spotme.sites.tab.bot (tap *Try it with sample photos*, then pick a sample selfie)
 
-[![CI](https://github.com/Darshan-dev57/spotme/actions/workflows/ci.yml/badge.svg)](https://github.com/Darshan-dev57/spotme/actions/workflows/ci.yml)
+[![CI](https://github.com/Darshan-dev57/SpotMe/actions/workflows/ci.yml/badge.svg)](https://github.com/Darshan-dev57/SpotMe/actions/workflows/ci.yml)
 ![Java 21](https://img.shields.io/badge/Java-21-informational)
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-informational)
 ![PostgreSQL + pgvector](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-informational)
@@ -24,7 +24,7 @@ that runs two pretrained OpenCV models as a library; nothing is trained.
   <img src="docs/images/screens/guest-results.jpg" width="200" alt="Guest results">
 </p>
 
-A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotme-demo.mp4`](docs/media/spotme-demo.mp4).
+A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotme-walkthrough.mp4`](docs/media/spotme-walkthrough.mp4).
 
 ## Contents
 
@@ -281,10 +281,21 @@ Every number below comes from a JSON file in [`eval/out/`](eval/out); how each w
 
 **Requirements:** JDK 21, Maven 3.9+, Node.js 20+, Docker.
 
-```bash
-git clone https://github.com/Darshan-dev57/spotme.git
-cd spotme
+One command starts PostgreSQL, downloads the face models, builds the web UI, starts the app, adds a sample event
+and creates a test organizer account:
 
+```bash
+git clone https://github.com/Darshan-dev57/SpotMe.git
+cd SpotMe
+./scripts/start.sh
+```
+
+It prints the local URL and the test account's email and password. Every step, what it does and how to check it
+is in [docs/RUNNING.md](docs/RUNNING.md).
+
+**Step by step**, without the script:
+
+```bash
 # 1. PostgreSQL 16 + pgvector on localhost:5434
 docker compose up -d
 
@@ -296,18 +307,18 @@ cd web && npm ci && npm run build && cd ..
 
 # 4. Start the app (API, worker and web UI in one process)
 cd backend
-SPOTME_WEB_DIR=../web/out mvn spring-boot:run
+SPOTME_WEB_DIR=../web/out SPOTME_WEB_ORIGIN=http://localhost:8080 mvn spring-boot:run
 ```
 
 Open http://localhost:8080, create an organizer account and an event, upload some photos, then open a guest
-link from the *Guests* tab in a private window.
+link from the *Guests* tab in a private window. (`SPOTME_WEB_ORIGIN` is the address guest links point to.)
 
-**Optional: the demo event.** Download the 36 public domain NASA photos and switch the demo on:
+**Optional: the sample event.** Download the 36 public domain NASA photos and switch the sample event on:
 
 ```bash
-./scripts/fetch-demo-photos.sh
+./scripts/fetch-sample-photos.sh
 cd backend
-SPOTME_WEB_DIR=../web/out SPOTME_DEMO_ENABLED=true SPOTME_DEMO_PHOTOSDIR=../data/demo-photos mvn spring-boot:run
+SPOTME_WEB_DIR=../web/out SPOTME_WEB_ORIGIN=http://localhost:8080 SPOTME_SAMPLE_ENABLED=true SPOTME_SAMPLE_PHOTOSDIR=../data/sample-photos mvn spring-boot:run
 ```
 
 **Working on the frontend.** Run the API alone and the Next.js dev server next to it:
@@ -332,7 +343,7 @@ cd web && npm run lint
 
 The integration tests run against a real PostgreSQL with pgvector and real face models. They cover the
 upload checks, the job queue under concurrent workers, recovery after a worker is killed mid-batch, event
-scoping of search, consent and withdrawal, removal and purge, expiry, signed links, the demo event, every
+scoping of search, consent and withdrawal, removal and purge, expiry, signed links, the sample event, every
 server-side image format (uploaded, indexed and found by a selfie) and the Drive import (with Google's
 answers faked, so it runs offline).
 CI runs the same commands on every push.
@@ -350,12 +361,12 @@ backend/        Spring Boot application (package dev.darshan.spotme)
   search/       selfie rules and event-scoped vector search
   attendee/     guest API: consent, search, download, removal, withdrawal
   privacy/      purge of photos and events
-  demo/         optional public demo event
+  sample/       optional public sample event
 web/            Next.js frontend (static export)
 eval/           measurement scripts and their results (eval/out)
 deploy/         packaging and start script for a single small Linux box
 docs/           architecture, decisions, measurements, diagrams
-scripts/        model and demo photo downloads
+scripts/        start script, model and sample photo downloads
 ```
 
 ## Screenshots
@@ -368,8 +379,8 @@ scripts/        model and demo photo downloads
 | Photos indexed and searchable | One private link per guest | Reviewing a removal request |
 | <img src="docs/images/screens/guest-notice.jpg" width="220" alt="Guest notice"> | <img src="docs/images/screens/guest-results.jpg" width="220" alt="Guest results"> | <img src="docs/images/screens/guest-viewer.jpg" width="220" alt="Photo viewer"> |
 | The notice a guest agrees to | Photos the guest is probably in | Full-screen viewer |
-| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Asking to be removed from solo photos"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Demo sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
-| Choosing what to remove | Sample selfies in the demo | Home page |
+| <img src="docs/images/screens/guest-remove.jpg" width="220" alt="Asking to be removed from solo photos"> | <img src="docs/images/screens/guest-selfie.jpg" width="220" alt="Sample selfies"> | <img src="docs/images/screens/home.jpg" width="220" alt="Home page"> |
+| Choosing what to remove | Sample selfies in the sample event | Home page |
 | <img src="docs/images/screens/guest-notify.jpg" width="220" alt="Turning on new-photo alerts"> | <img src="docs/images/screens/guest-alerts.jpg" width="220" alt="New photos on the private alert link"> | |
 | Opting in to new-photo alerts | The private link with new photos | |
 
@@ -409,7 +420,7 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - Face models: [OpenCV Zoo](https://github.com/opencv/opencv_zoo), YuNet (MIT) and SFace (Apache 2.0)
 - HEIC decoding in the browser: [heic-to](https://github.com/hoppergee/heic-to) (LGPL-3.0, built on libheif),
   loaded as a separate file only when a HEIC photo is picked
-- Demo photos: [NASA Image and Video Library](https://images.nasa.gov/), public domain
+- Sample photos: [NASA Image and Video Library](https://images.nasa.gov/), public domain
 - Evaluation data: [Labeled Faces in the Wild](http://vis-www.cs.umass.edu/lfw/), used only as a public
   benchmark and never committed
 

@@ -25,7 +25,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 17. [A static Next.js export served by Spring Boot](#17-a-static-nextjs-export-served-by-spring-boot)
 18. [Hosting on one small box with a start script](#18-hosting-on-one-small-box-with-a-start-script)
 19. [Integration tests against real Postgres](#19-integration-tests-against-real-postgres)
-20. [A public demo with public domain photos](#20-a-public-demo-with-public-domain-photos)
+20. [A public sample event with public domain photos](#20-a-public-sample-event-with-public-domain-photos)
 21. [Removal takes only the guest's solo photos](#21-removal-takes-only-the-guests-solo-photos)
 22. [New-photo alerts as an opt-in private link](#22-new-photo-alerts-as-an-opt-in-private-link)
 23. [HEIC and AVIF are converted in the browser](#23-heic-and-avif-are-converted-in-the-browser)
@@ -261,7 +261,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 
 ## 18. Hosting on one small box with a start script
 
-- **Choice:** the hosted demo runs on one Debian box with about 470 MB of memory and 2 CPUs. `deploy/start.sh`
+- **Choice:** the live site runs on one Debian box with about 470 MB of memory and 2 CPUs. `deploy/start.sh`
   installs PostgreSQL 16 with pgvector and a Java 21 runtime if they are missing, fetches OpenCV and the face
   models with checksum checks, sizes everything down (one face engine, one worker thread, 128 MB heap,
   `shared_buffers` 32 MB), adds a 1 GB swap file and starts the app.
@@ -270,7 +270,7 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Alternative:** Docker Compose, or managed Postgres plus a container platform.
 - **Tradeoff:** the app plus the face models need more memory than the box has (peak resident memory while
   indexing was 467 to 493 MB in local runs, `eval/out/memory.json`), so the swap file is required. Photos are
-  capped at 16 megapixels and 60 per event on the demo.
+  capped at 16 megapixels and 60 per event on the live site.
 - **What would change it:** real traffic. A 1 to 2 GB machine removes the need for swap.
 
 ## 19. Integration tests against real Postgres
@@ -284,17 +284,17 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 - **Tradeoff:** the suite needs Docker; a full `mvn verify` takes under a minute on the development machine.
 - **What would change it:** nothing; the slow part is container start-up, shared by all test classes.
 
-## 20. A public demo with public domain photos
+## 20. A public sample event with public domain photos
 
-- **Choice:** with `spotme.demo.enabled`, the app keeps one published demo event filled with 36 photos of the
-  SpaceX Demo-2 launch week from the NASA Image and Video Library. Each visitor gets a personal invite
+- **Choice:** with `spotme.sample.enabled`, the app keeps one published sample event filled with 36 photos of the
+  SpaceX Crew Dragon launch week from the NASA Image and Video Library. Each visitor gets a personal invite
   (rate limited per address) and can try official NASA portraits as sample selfies.
 - **Why:** visitors can try the whole guest flow without signing up, and NASA imagery is generally not
   subject to copyright in the United States. LFW, used for measurement, has no such licence statement and is
-  kept out of the repository and the demo.
-- **Alternative:** a demo that asks for the visitor's own selfie only (they would find no photos), or a
-  shared demo login.
-- **Tradeoff:** the sample selfies are of public figures, and the demo shows how the product works rather
+  kept out of the repository and the sample event.
+- **Alternative:** a sample event that asks for the visitor's own selfie only (they would find no photos), or a
+  shared organizer login.
+- **Tradeoff:** the sample selfies are of public figures, and the sample event shows how the product works rather
   than how it performs on a real party.
 - **What would change it:** a consented set of real event photos.
 

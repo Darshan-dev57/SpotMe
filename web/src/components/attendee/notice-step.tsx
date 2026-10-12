@@ -47,7 +47,7 @@ export function NoticeStep({
   return (
     <article className="pt-6">
       <p className="text-sm text-muted-foreground">
-        {notice.demo ? "Public demo · anyone can try it" : `${notice.organizer} invited ${notice.invitedAs}`}
+        {notice.sample ? "Sample event · anyone can try it" : `${notice.organizer} invited ${notice.invitedAs}`}
       </p>
       <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{notice.eventTitle}</h1>
 

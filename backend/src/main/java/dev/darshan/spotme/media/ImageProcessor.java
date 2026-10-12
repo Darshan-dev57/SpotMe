@@ -133,7 +133,7 @@ public class ImageProcessor {
         }
     }
 
-    /** The pixel cap in words, e.g. "16 megapixels" (the hosted demo uses a lower cap than the default). */
+    /** The pixel cap in words, e.g. "16 megapixels" (the hosted site uses a lower cap than the default). */
     String pixelLimit() {
         return maxPixels >= 1_000_000 ? maxPixels / 1_000_000 + " megapixels" : maxPixels + " pixels";
     }

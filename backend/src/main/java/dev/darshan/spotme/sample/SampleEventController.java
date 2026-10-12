@@ -1,4 +1,4 @@
-package dev.darshan.spotme.demo;
+package dev.darshan.spotme.sample;
 
 import dev.darshan.spotme.common.ApiException;
 import dev.darshan.spotme.common.RateLimiter;
@@ -12,37 +12,37 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/** Public endpoints for the demo event. Both answer 404 when the demo is switched off. */
+/** Public endpoints for the sample event. Both answer 404 when it is switched off. */
 @RestController
-public class DemoController {
+public class SampleEventController {
 
-    private final DemoService demo;
+    private final SampleEventService sample;
     private final RateLimiter<String> invitesPerIp;
 
-    public DemoController(DemoService demo, SpotMeProperties props) {
-        this.demo = demo;
-        this.invitesPerIp = new RateLimiter<>(Math.max(1, props.demo().invitesPerMinute()));
+    public SampleEventController(SampleEventService sample, SpotMeProperties props) {
+        this.sample = sample;
+        this.invitesPerIp = new RateLimiter<>(Math.max(1, props.sample().invitesPerMinute()));
     }
 
-    @GetMapping("/api/demo")
+    @GetMapping("/api/sample")
     public Map<String, Object> summary() {
         requireEnabled();
-        return demo.summary();
+        return sample.summary();
     }
 
-    @PostMapping("/api/demo/invite")
+    @PostMapping("/api/sample/invite")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> invite(HttpServletRequest http) {
         requireEnabled();
         if (!invitesPerIp.tryAcquire(clientIp(http))) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "rate_limited", "Too many demo invites. Try again in a minute.");
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "rate_limited", "Too many invites. Try again in a minute.");
         }
-        return Map.of("token", demo.newVisitorInvite());
+        return Map.of("token", sample.newVisitorInvite());
     }
 
     private void requireEnabled() {
-        if (!demo.enabled()) {
-            throw ApiException.notFound("Demo");
+        if (!sample.enabled()) {
+            throw ApiException.notFound("Sample event");
         }
     }
 

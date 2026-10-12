@@ -1,7 +1,7 @@
-# NASA Image and Video Library ids for the demo album (SpaceX Demo-2 launch week, 2019-2020).
+# NASA Image and Video Library ids for the sample album (SpaceX Crew Dragon launch week, 2019-2020).
 # NASA imagery is generally not subject to copyright in the United States:
 # https://www.nasa.gov/nasa-brand-center/images-and-media/
-# scripts/fetch-demo-photos.sh downloads the "~medium" rendition of each one.
+# scripts/fetch-sample-photos.sh downloads the "~medium" rendition of each one.
 NHQ202008020017
 NHQ202008020025
 NHQ201908130003

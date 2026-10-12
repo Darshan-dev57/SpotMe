@@ -1,9 +1,9 @@
 """
-Checks the hosted demo end to end and measures it, from the outside, like a visitor would.
+Checks the live site end to end and measures it, from the outside, like a visitor would.
 
-  python3 eval/hosted_check.py   (needs scripts/fetch-demo-photos.sh to have run)
+  python3 eval/hosted_check.py   (needs scripts/fetch-sample-photos.sh to have run)
 
-1. registers an organizer, creates an event and uploads the 36 demo photos (2 at a time),
+1. registers an organizer, creates an event and uploads the 36 sample photos (2 at a time),
 2. times how long the box takes to index them,
 3. publishes, invites three guests and runs searches with three sample selfies,
 4. deletes the event again so the box is left as it was.
@@ -23,8 +23,8 @@ from run_eval import pct, save
 
 API = os.environ.get("SPOTME_API", "https://spotme.sites.tab.bot")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PHOTOS = os.path.join(ROOT, "data", "demo-photos")
-SELFIES = {name: os.path.join(ROOT, "web", "public", "demo", name) for name in ("behnken.jpg", "hurley-2.jpg", "glover.jpg")}
+PHOTOS = os.path.join(ROOT, "data", "sample-photos")
+SELFIES = {name: os.path.join(ROOT, "web", "public", "sample", name) for name in ("behnken.jpg", "hurley-2.jpg", "glover.jpg")}
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     h = {"Authorization": "Bearer " + token}
     expires = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)).isoformat()
     ev = requests.post(f"{API}/api/events", headers=h, json={
-        "title": "Hosted check", "purposeNotice": "Measuring the hosted demo.", "expiresAt": expires,
+        "title": "Hosted check", "purposeNotice": "Measuring the live site.", "expiresAt": expires,
         "consentAttested": True}).json()["id"]
 
     files = sorted(f for f in os.listdir(PHOTOS) if f.endswith(".jpg"))

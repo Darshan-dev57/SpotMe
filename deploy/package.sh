@@ -2,7 +2,7 @@
 # Builds everything the hosted box needs into one folder (default: deploy/out):
 #   app/      the Spring Boot app, unpacked (classes + libraries)
 #   web/      the static web UI (Next.js export)
-#   demo-photos/  public domain NASA photos for the demo event
+#   sample-photos/  public domain NASA photos for the sample event
 #   start.sh  installs Postgres + Java on the box, fetches OpenCV and the models, starts the app
 #   fetch-models.sh  used by start.sh
 #   tab-site.json  tells the host to run start.sh and send traffic to port 8080
@@ -34,7 +34,7 @@ cp -r "$ROOT/web/out" "$OUT/web"
 
 cp "$ROOT/scripts/fetch-models.sh" "$OUT/fetch-models.sh"
 
-"$ROOT/scripts/fetch-demo-photos.sh" "$OUT/demo-photos" >/dev/null
+"$ROOT/scripts/fetch-sample-photos.sh" "$OUT/sample-photos" >/dev/null
 
 cp "$ROOT/deploy/start.sh" "$OUT/start.sh"
 cat > "$OUT/tab-site.json" <<'EOF'
