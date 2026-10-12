@@ -399,6 +399,8 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - [docs/DECISIONS.md](docs/DECISIONS.md): twenty-four design decisions with the alternative, the tradeoff and what would change them
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
+- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md): eight threats, the defence for each and the test that proves it
+- [SECURITY.md](SECURITY.md): how to report a security problem
 
 ## Credits
 
