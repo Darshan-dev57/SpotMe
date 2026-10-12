@@ -117,6 +117,20 @@ public class DriveClient {
                 && uri.getUserInfo() == null;
     }
 
+    /** Where a redirect points. Refused unless it is again an https Google host, so a redirect can't reach our network. */
+    static URI redirectTarget(URI current, String location) throws IOException {
+        URI next;
+        try {
+            next = current.resolve(location.trim());
+        } catch (IllegalArgumentException e) {
+            throw new IOException("blocked_host");
+        }
+        if (!isAllowed(next)) {
+            throw new IOException("blocked_host");
+        }
+        return next;
+    }
+
     private record Download(int status, String contentType, byte[] body) {
     }
 
@@ -140,7 +154,7 @@ public class DriveClient {
             if (status >= 300 && status < 400) {
                 res.body().close();
                 String location = res.headers().firstValue("Location").orElseThrow(() -> new IOException("redirect_without_location"));
-                uri = uri.resolve(location);
+                uri = redirectTarget(uri, location);
                 continue;
             }
             String type = res.headers().firstValue("Content-Type").orElse("").toLowerCase();
