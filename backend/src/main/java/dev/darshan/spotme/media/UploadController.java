@@ -3,6 +3,7 @@ package dev.darshan.spotme.media;
 import dev.darshan.spotme.common.ApiException;
 import dev.darshan.spotme.event.EventAccess;
 import dev.darshan.spotme.jobs.JobQueue;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +29,16 @@ public class UploadController {
     private final EventAccess access;
     private final PhotoIntake intake;
     private final JobQueue queue;
+    private final MeterRegistry metrics;
 
     public UploadController(JdbcTemplate jdbc, TransactionTemplate tx, EventAccess access, PhotoIntake intake,
-                            JobQueue queue) {
+                            JobQueue queue, MeterRegistry metrics) {
         this.jdbc = jdbc;
         this.tx = tx;
         this.access = access;
         this.intake = intake;
         this.queue = queue;
+        this.metrics = metrics;
     }
 
     @PostMapping("/api/events/{eventId}/photos")
@@ -45,6 +48,8 @@ public class UploadController {
         access.requireLive(eventId);
 
         PhotoIntake.Result result = intake.add(eventId, file.getBytes());
+        // rejected uploads are counted in ApiErrorHandler with their error code
+        metrics.counter("spotme.uploads", "result", result.status(), "code", "none").increment();
         HttpStatus status = "queued".equals(result.status()) ? HttpStatus.CREATED : HttpStatus.OK;
         return ResponseEntity.status(status).body(result(result.photoId(), result.status()));
     }

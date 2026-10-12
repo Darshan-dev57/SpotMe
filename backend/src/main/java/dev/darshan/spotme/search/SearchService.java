@@ -5,6 +5,8 @@ import dev.darshan.spotme.face.FaceEngine;
 import dev.darshan.spotme.face.FaceEnginePool;
 import dev.darshan.spotme.face.Vectors;
 import dev.darshan.spotme.media.ImageProcessor;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.opencv.core.Mat;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Selfie -> one face vector (kept only in memory) -> exact cosine search inside ONE event.
@@ -60,11 +63,17 @@ public class SearchService {
     private final ImageProcessor images;
     private final FaceEnginePool engines;
     private final JdbcTemplate jdbc;
+    private final Timer searchTimer;
 
-    public SearchService(ImageProcessor images, FaceEnginePool engines, JdbcTemplate jdbc) {
+    public SearchService(ImageProcessor images, FaceEnginePool engines, JdbcTemplate jdbc, MeterRegistry metrics) {
         this.images = images;
         this.engines = engines;
         this.jdbc = jdbc;
+        // whole guest search: decode the selfie, find its face, query the event
+        this.searchTimer = Timer.builder("spotme.search")
+                .description("Time for one selfie search, from upload to matches")
+                .publishPercentiles(0.5, 0.95)
+                .register(metrics);
     }
 
     public float[] selfieVector(byte[] selfie, long[] nanos) throws BadSelfieException {
@@ -156,11 +165,13 @@ public class SearchService {
 
     public Result run(UUID eventId, UUID membershipId, byte[] selfie, double maxDistance, int limit)
             throws BadSelfieException {
+        long start = System.nanoTime();
         long[] nanos = new long[2];
         float[] vector = selfieVector(selfie, nanos);
         long t = System.nanoTime();
         List<Match> matches = search(eventId, membershipId, vector, maxDistance, limit);
         double sqlMs = (System.nanoTime() - t) / 1e6;
+        searchTimer.record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
         return new Result(matches, new Timings(nanos[0] / 1e6, nanos[1] / 1e6, sqlMs));
     }
 }
