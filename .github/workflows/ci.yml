@@ -40,7 +40,7 @@ jobs:
         if: failure()
         run: |
           for f in $(grep -l -E "<<< (FAILURE|ERROR)" target/surefire-reports/*.txt target/failsafe-reports/*.txt 2>/dev/null); do
-            echo "::error title=$(basename "$f" .txt)::$(grep -m1 -A3 -E '<<< (FAILURE|ERROR)' "$f" | tr '\n' ' ' | cut -c1-900)"
+            echo "::error title=$(basename "$f" .txt)::$(grep -A12 -E '<<< (FAILURE|ERROR)' "$f" | grep -v -E '^\s*at |^\s*$' | tr '\n' ' ' | cut -c1-1800)"
           done
 
   web:
