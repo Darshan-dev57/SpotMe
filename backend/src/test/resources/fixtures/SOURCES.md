@@ -5,7 +5,7 @@ copyright in the United States; see https://www.nasa.gov/nasa-brand-center/image
 
 | File | NASA ID | Content |
 |---|---|---|
-| crew-group.jpg | jsc2019e021792 | Group portrait, SpaceX Demo-2 crew and backup crew (left to right: Glover, Hopkins, Hurley, Behnken) |
+| crew-group.jpg | jsc2019e021792 | Group portrait, Crew Dragon DM-2 crew and backup crew (left to right: Glover, Hopkins, Hurley, Behnken) |
 | hurley.jpg | jsc2019e021789 | Individual portrait, Doug Hurley |
 | behnken.jpg | jsc2019e021788 | Individual portrait, Bob Behnken |
 | glover.jpg | jsc2019e021791 | Individual portrait, Victor Glover |
