@@ -17,7 +17,7 @@ public record SpotMeProperties(
         Search search,
         Worker worker,
         Eval eval,
-        Demo demo) {
+        Sample sample) {
 
     public record Upload(long maxBytes, long maxPixels, int maxConcurrentDecodes, int thumbnailSide, int maxPhotosPerEvent) {
     }
@@ -42,9 +42,9 @@ public record SpotMeProperties(
     }
 
     /**
-     * The public demo: a published event filled from photosDir that any visitor can join.
-     * invitesPerMinute limits demo invites per IP address.
+     * The public sample event: a published event filled from photosDir that any visitor can join.
+     * invitesPerMinute limits visitor invites per IP address.
      */
-    public record Demo(boolean enabled, String photosDir, int invitesPerMinute) {
+    public record Sample(boolean enabled, String photosDir, int invitesPerMinute) {
     }
 }
