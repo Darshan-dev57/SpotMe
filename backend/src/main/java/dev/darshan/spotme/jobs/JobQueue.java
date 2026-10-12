@@ -51,26 +51,31 @@ public class JobQueue {
     /**
      * Claims up to {@code limit} ready jobs. This is one short statement (its own transaction):
      * the slow work happens later, outside any lock.
+     * The ids are picked in a MATERIALIZED CTE so they are chosen exactly once. Written as
+     * "WHERE id IN (SELECT ... LIMIT n)", Postgres may re-run the subquery for every row it updates
+     * when it thinks the table is tiny, and then one claim takes more than n jobs.
      */
     public List<Job> claim(String workerId, int limit, Duration lease) {
         return jdbc.query("""
+                WITH picked AS MATERIALIZED (
+                    SELECT id FROM jobs
+                    WHERE state = 'queued' AND run_after <= now()
+                    ORDER BY priority, run_after, id
+                    LIMIT ?
+                    FOR UPDATE SKIP LOCKED)
                 UPDATE jobs SET state = 'running',
                                 attempts = attempts + 1,
                                 claim_token = gen_random_uuid(),
                                 claimed_by = ?,
                                 lease_until = now() + make_interval(secs => ?),
                                 updated_at = now()
-                WHERE id IN (
-                    SELECT id FROM jobs
-                    WHERE state = 'queued' AND run_after <= now()
-                    ORDER BY priority, run_after, id
-                    LIMIT ?
-                    FOR UPDATE SKIP LOCKED)
-                RETURNING id, kind, target_id, attempts, max_attempts, claim_token
+                FROM picked
+                WHERE jobs.id = picked.id
+                RETURNING jobs.id, jobs.kind, jobs.target_id, jobs.attempts, jobs.max_attempts, jobs.claim_token
                 """, (rs, i) -> new Job(rs.getLong("id"), JobKind.valueOf(rs.getString("kind")),
                         rs.getObject("target_id", UUID.class), rs.getInt("attempts"), rs.getInt("max_attempts"),
                         rs.getObject("claim_token", UUID.class)),
-                workerId, lease.toMillis() / 1000.0, limit);
+                limit, workerId, lease.toMillis() / 1000.0);
     }
 
     /**
