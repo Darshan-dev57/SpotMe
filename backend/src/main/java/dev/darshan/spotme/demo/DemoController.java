@@ -46,12 +46,12 @@ public class DemoController {
         }
     }
 
-    /** Behind a proxy the visitor's address is the first entry of X-Forwarded-For. */
+    /**
+     * The visitor's address. Behind a proxy, Tomcat (server.forward-headers-strategy=native) reads
+     * X-Forwarded-For from the right and stops at the first address that is not a trusted proxy, so
+     * entries a client writes into the header itself are ignored.
+     */
     private static String clientIp(HttpServletRequest http) {
-        String forwarded = http.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
         return http.getRemoteAddr();
     }
 }
