@@ -242,6 +242,7 @@ query, pool size and memory limits were tuned on the hosted box. Details in
 - Opt-in "notify me": a private link that shows new photos of you as the organizer adds them
 - "Not me" reports and consent withdrawal
 - "Remove me": deletes the photos where you are alone, after the organizer confirms; group photos stay
+- Errors come back as short JSON with no stack traces, and guest results never include face boxes or vectors
 
 ## Tech stack
 
