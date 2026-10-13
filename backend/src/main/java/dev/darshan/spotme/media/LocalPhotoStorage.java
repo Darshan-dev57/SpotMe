@@ -1,6 +1,7 @@
 package dev.darshan.spotme.media;
 
 import dev.darshan.spotme.config.SpotMeProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.util.stream.Stream;
 
 /** Private files on local disk, outside any web root. Only the media endpoint reads them. */
 @Component
+@ConditionalOnProperty(name = "spotme.storage-type", havingValue = "local", matchIfMissing = true)
 public class LocalPhotoStorage implements PhotoStorage {
 
     private final Path root;

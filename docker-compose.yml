@@ -15,5 +15,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  # photos in a bucket instead of on disk: docker compose --profile s3 up -d (see docs/STORAGE.md)
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    container_name: spotme-minio
+    profiles: ["s3"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: spotme
+      MINIO_ROOT_PASSWORD: spotme-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - spotme-minio:/data
 volumes:
   spotme-pgdata:
+  spotme-minio:
