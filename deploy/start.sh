@@ -118,6 +118,9 @@ export SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE=5
 export SERVER_TOMCAT_THREADS_MAX=16
 # /actuator/health shows disk, database and memory details, so the box can be watched from outside
 export MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS=always
+# metrics stay private on the public site; logs are JSON lines (request and job ids included)
+export MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info
+export LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs
 export PORT
 
 log "starting SpotMe on port $PORT"
