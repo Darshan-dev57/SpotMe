@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DiscoverButton } from "@/components/obsidian/discover-button";
 import { Spinner } from "@/components/ui/spinner";
@@ -14,7 +13,6 @@ type SampleSummary = { title: string; photoCount: number; readyCount: number };
  * Renders nothing when the server has no sample event (local development, most self-hosted setups).
  */
 export function SampleButton() {
-  const router = useRouter();
   const [sample, setSample] = useState<SampleSummary | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -30,7 +28,9 @@ export function SampleButton() {
     setBusy(true);
     try {
       const { token } = await api<{ token: string }>("/api/sample/invite", { method: "POST" });
-      router.push(`/join#${token}`);
+      // a full page load, so the join page sees the token in the "#" from its first render
+      // (a client-side push showed "This invite can't be opened" for a moment first)
+      window.location.assign(`/join#${token}`);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Could not open the sample event.");
       setBusy(false);
