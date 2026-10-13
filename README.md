@@ -24,7 +24,7 @@ that runs two pretrained OpenCV models as a library; nothing is trained.
   <img src="docs/images/screens/guest-results.jpg" width="200" alt="Guest results">
 </p>
 
-A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotme-walkthrough.mp4`](docs/media/spotme-walkthrough.mp4).
+A 65 second walkthrough recorded on the live site at desktop size (a guest finds their photos in the sample event, then an organizer uploads photos with live progress, publishes and creates guest links) is in [`docs/media/spotme-walkthrough.mp4`](docs/media/spotme-walkthrough.mp4).
 
 ## Contents
 
