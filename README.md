@@ -64,6 +64,10 @@ A 40 second walkthrough of the guest and organizer flow is in [`docs/media/spotm
 - **Auth, limits and privacy.** Opaque session tokens stored as SHA-256 hashes, BCrypt passwords, per-guest
   and per-email rate limits, HMAC-signed expiring photo links, versioned consent, removal requests that hide
   at once, and an expiry purge that deletes files and vectors together.
+- **Metrics and logs you can act on.** Prometheus metrics for queue depth, oldest job wait, job outcomes and
+  retries, search p50/p95, upload failures, auth failures, rate limit rejections, storage and the DB pool; a
+  request id or job id on every log line, JSON logs on the server, no tokens or photo data in logs
+  ([docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)).
 - **Tested and deployed.** 107 backend tests (JUnit 5 and Testcontainers against real PostgreSQL) and 23 web
   tests run in GitHub Actions on every push; one script sets up the whole server from a bare Debian box.
 
@@ -411,6 +415,7 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md): how every number was measured and how to reproduce it
 - [eval/README.md](eval/README.md): the evaluation dataset and scripts
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md): eight threats, the defence for each and the test that proves it
+- [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md): every metric, where it is counted, and what the logs never contain
 - [SECURITY.md](SECURITY.md): how to report a security problem
 
 ## Credits
