@@ -7,9 +7,9 @@ const body = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-body", di
 const data = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-data", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "SpotMe: find your photos from the event",
+  title: "SpotMe: find all your photos from any event with one selfie",
   description:
-    "Organizers upload a private event album. Invited guests take one selfie and get back the photos they are in, from that event only.",
+    "The organizer uploads the event photos, you take one selfie, and SpotMe finds every photo you are in. Try it with a sample event, no sign-up.",
 };
 
 export const viewport: Viewport = {

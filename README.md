@@ -9,7 +9,7 @@ with pgvector, an ingestion pipeline that never trusts its input, organizer and 
 flows with deletion that really deletes, and measurements on a real 473 MB server. Face matching is one module
 that runs two pretrained OpenCV models as a library; nothing is trained.
 
-**Live:** https://spotme.sites.tab.bot (tap *Try it with sample photos*, then pick a sample selfie)
+**Live:** https://spotme.sites.tab.bot (scroll to *Try it with a sample event* and tap one of the four astronauts)
 
 [![CI](https://github.com/Darshan-dev57/SpotMe/actions/workflows/ci.yml/badge.svg)](https://github.com/Darshan-dev57/SpotMe/actions/workflows/ci.yml)
 ![Java 21](https://img.shields.io/badge/Java-21-informational)
@@ -344,7 +344,8 @@ SPOTME_WEB_DIR=../web/out SPOTME_WEB_ORIGIN=http://localhost:8080 mvn spring-boo
 Open http://localhost:8080, create an organizer account and an event, upload some photos, then open a guest
 link from the *Guests* tab in a private window. (`SPOTME_WEB_ORIGIN` is the address guest links point to.)
 
-**Optional: the sample event.** Download the 36 public domain NASA photos and switch the sample event on:
+**Optional: the sample event.** Download the 37 public domain NASA photos of the Crew-1 mission (see
+[Sample photos](#sample-photos)) and switch the sample event on:
 
 ```bash
 ./scripts/fetch-sample-photos.sh
@@ -460,9 +461,26 @@ The full list, with numbers, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#l
 - Face models: [OpenCV Zoo](https://github.com/opencv/opencv_zoo), YuNet (MIT) and SFace (Apache 2.0)
 - HEIC decoding in the browser: [heic-to](https://github.com/hoppergee/heic-to) (LGPL-3.0, built on libheif),
   loaded as a separate file only when a HEIC photo is picked
-- Sample photos: [NASA Image and Video Library](https://images.nasa.gov/), public domain
+- Sample photos: [NASA Image and Video Library](https://images.nasa.gov/), public domain (details below)
 - Evaluation data: [Labeled Faces in the Wild](http://vis-www.cs.umass.edu/lfw/), used only as a public
   benchmark and never committed
+
+## Sample photos
+
+The sample event on the home page is an album of 37 photos from NASA's SpaceX Crew-1 mission (launch week in
+November 2020 to the crew's visits after the mission, up to November 2021). The four Crew-1 astronauts (Victor
+Glover, Mike Hopkins, Soichi Noguchi and Shannon Walker) each appear in 9 of them, in group shots and on
+their own; the rest show other people, the rocket and the capsule.
+
+- Album: the NASA ids are listed in [`scripts/sample-photos.txt`](scripts/sample-photos.txt), and
+  `scripts/fetch-sample-photos.sh` downloads the "~medium" rendition of each from images.nasa.gov.
+- Sample faces: one portrait of each astronaut, cropped from NASA photos that are not in the album
+  (NHQ202111150006, NHQ202111160023, NHQ202111150008, NHQ202111160028), in `web/public/sample/faces/`.
+- Home page contact sheet: crops of album photos, listed in [`web/public/sample/SOURCES.md`](web/public/sample/SOURCES.md).
+
+NASA imagery is generally not subject to copyright in the United States
+([NASA media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/)). The photos are used to show
+how the search works; they do not imply any endorsement by NASA or the people in them.
 
 ## License
 
