@@ -8,7 +8,7 @@ The LFW-based synthetic evaluation is useful for reproducible comparison, but it
 
 ## Summary at the live threshold (0.51)
 
-Measured on the hosted site (2 vCPUs, 473 MB RAM) on 2026-10-10 and 2026-10-11, in the scale-test event
+Measured on the hosted site (2 vCPUs, 473 MB RAM) on 2026-10-06 and 2026-10-08, in the scale-test event
 (except worker recovery, a local run):
 11,251 LFW photos with 12,940 faces. The face models, the 0.51 threshold, the search query and JPEG decoding
 have not changed since these runs; later commits added other image formats, metrics and storage options.

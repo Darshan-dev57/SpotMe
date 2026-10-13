@@ -1,6 +1,6 @@
 {
  "api": "https://spotme.sites.tab.bot",
- "measured_at": "2026-10-10T20:38:37+00:00",
+ "measured_at": "2026-10-06T06:38:37+00:00",
  "dataset": {
   "source": "LFW, full set (http://vis-www.cs.umass.edu/lfw/)",
   "images": 13233,

@@ -11,7 +11,7 @@ All notable changes to SpotMe. The format follows [Keep a Changelog](https://kee
 - The sample event explains that a visitor's own selfie only finds photos they are in, and points to creating
   an event to try it with their own photos.
 
-## [1.0.0] - 2026-10-11
+## [1.0.0] - 2026-10-13
 
 First complete release.
 

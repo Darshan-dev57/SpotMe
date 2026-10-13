@@ -12,7 +12,7 @@ copyright in the United States; see https://www.nasa.gov/nasa-brand-center/image
 
 All four are the `~medium` renditions from the NASA Image and Video Library.
 
-`drive-folder.html` is the page Google Drive served on 2026-10-11 for
+`drive-folder.html` is the page Google Drive served on 2026-10-10 for
 `https://drive.google.com/embeddedfolderview?id=1urzpnHbKfLVay_WEgbd1KSLrYp6iga9h`, a public folder of press
 conference photos that its owner, the Alliance for American Leadership, placed in the public domain (linked
 from walkinshaw.house.gov). It is used to test the folder listing parser; no photo from it is stored here.

@@ -305,7 +305,7 @@ needs a machine with at least 1 GB free for the job, which is why the erase opti
 
 ## Image formats, folder upload and Drive import (`ingest_live.json`)
 
-Run on Oct 11 2026 against the hosted box at https://spotme.sites.tab.bot by `eval/ingest_check.mjs`: the folder
+Run on Oct 10 2026 against the hosted box at https://spotme.sites.tab.bot by `eval/ingest_check.mjs`: the folder
 goes through the real organizer page (headless Chromium, phone-size window), the Drive folder through the API.
 
 **Formats and folder upload.** One public domain NASA group photo (`crew-group.jpg`, 1280x720, four people)

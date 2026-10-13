@@ -4,7 +4,7 @@
  "event": "00dff3bc-72fb-4051-a165-7d76d6931616",
  "threshold": 0.51,
  "max_results": 200,
- "measured_at": "2026-10-11T04:37:50Z",
+ "measured_at": "2026-10-08T16:37:50Z",
  "people": 143,
  "refused_selfies": 20,
  "refused_reasons": {
