@@ -37,9 +37,11 @@ import java.util.stream.Stream;
 public class SampleEventService {
 
     static final String ORGANIZER_EMAIL = "sample@spotme.invalid";
-    static final String TITLE = "Crew Dragon launch week";
+    /** Also the sample event's identity: a new title means a new photo set, so a fresh event is made. */
+    static final String TITLE = "NASA Crew-1 mission";
     static final String NOTICE = "This is the SpotMe sample event. The photos are public domain NASA photos of the "
-            + "Crew Dragon launch week in May 2020. Your selfie is compared in memory and never saved. "
+            + "four Crew-1 astronauts, from launch week in November 2020 to their visits after the mission. "
+            + "Your selfie is compared in memory and never saved. "
             + "This invite only works for this event and ends when you leave or the event expires.";
 
     private static final Logger log = LoggerFactory.getLogger(SampleEventService.class);
@@ -63,9 +65,9 @@ public class SampleEventService {
     public Optional<UUID> liveEvent() {
         List<UUID> ids = jdbc.queryForList("""
                 SELECT id FROM events
-                WHERE sample AND status = 'published' AND expires_at > now() + interval '1 day'
+                WHERE sample AND title = ? AND status = 'published' AND expires_at > now() + interval '1 day'
                 ORDER BY created_at DESC LIMIT 1
-                """, UUID.class);
+                """, UUID.class, TITLE);
         return ids.stream().findFirst();
     }
 
@@ -81,6 +83,11 @@ public class SampleEventService {
             log.warn("Sample event is on but {} has no .jpg photos, so no sample event was created", settings.photosDir());
             return;
         }
+        // a sample event from an older photo set is expired now, and the expiry sweeper deletes it
+        int retired = jdbc.update("UPDATE events SET expires_at = now() WHERE sample AND title <> ? AND expires_at > now()", TITLE);
+        if (retired > 0) {
+            log.info("Expired {} sample event(s) from an older photo set", retired);
+        }
         UUID eventId = createEvent();
         int added = 0;
         for (Path photo : photos) {
@@ -95,17 +102,17 @@ public class SampleEventService {
     }
 
     /**
-     * In the sample event, photos with no faces in them (the rocket, the launch pad) are shared with every
-     * visitor, so the "Event photos" section shows what an organizer would use it for.
+     * In the sample event every photo is shared with every visitor (they are public domain NASA photos), so the
+     * visitor sees the whole album and which of its photos their search picked out.
      */
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
-    public void shareSceneryPhotos() {
+    public void shareSamplePhotos() {
         if (!enabled()) {
             return;
         }
         jdbc.update("""
                 UPDATE photos SET is_public = true
-                WHERE status = 'ready' AND face_count = 0 AND NOT is_public
+                WHERE status = 'ready' AND NOT is_public
                   AND event_id IN (SELECT id FROM events WHERE sample AND status = 'published')
                 """);
     }

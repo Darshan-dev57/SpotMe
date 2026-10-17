@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Bell, Check, Copy, Download, Expand, Flag, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -150,10 +151,24 @@ export function Results({
       {photos.length === 0 ? (
         mode !== "removed" && (
           <Empty className="mt-8 border">
-            <EmptyHeader>
-              <EmptyTitle>Nothing close enough</EmptyTitle>
-              <EmptyDescription>Try a clearer, front-facing selfie.</EmptyDescription>
-            </EmptyHeader>
+            {notice.sample ? (
+              <EmptyHeader>
+                <EmptyTitle>You are not in this album</EmptyTitle>
+                <EmptyDescription>
+                  That is expected: this sample album only has NASA&apos;s Crew-1 astronauts, and SpotMe only finds
+                  you in photos you are in. Try one of the sample faces, or{" "}
+                  <Link href="/organizer" className="underline underline-offset-4">
+                    create your own event
+                  </Link>{" "}
+                  with a few group photos of you and search again.
+                </EmptyDescription>
+              </EmptyHeader>
+            ) : (
+              <EmptyHeader>
+                <EmptyTitle>Nothing close enough</EmptyTitle>
+                <EmptyDescription>Try a clearer, front-facing selfie.</EmptyDescription>
+              </EmptyHeader>
+            )}
           </Empty>
         )
       ) : (

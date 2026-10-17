@@ -8,13 +8,7 @@ import { ApiError, Notice, SearchResult, api } from "@/lib/api";
 import { LiveCamera } from "@/components/attendee/live-camera";
 import { detectCameraMode } from "@/lib/camera";
 import { shrinkImage } from "@/lib/image";
-
-/** Sample "selfies" for the public sample event: official NASA portraits that are not in the album itself. */
-const SAMPLE_SELFIES = [
-  { src: "/sample/behnken.jpg", name: "Bob Behnken", note: "in the album" },
-  { src: "/sample/hurley-2.jpg", name: "Doug Hurley", note: "in the album" },
-  { src: "/sample/glover.jpg", name: "Victor Glover", note: "not in it" },
-];
+import { SAMPLE_FACES } from "@/lib/sample";
 
 /** One selfie, sent as the raw request body and matched in memory on the server. */
 export function SelfieStep({
@@ -89,9 +83,10 @@ export function SelfieStep({
 
       {notice.sample && (
         <div className="mt-6">
-          <h2 className="font-semibold">Try a sample selfie</h2>
-          <ul className="mt-4 grid grid-cols-3 gap-3 sm:max-w-md">
-            {SAMPLE_SELFIES.map((s) => (
+          <h2 className="font-semibold">Try a sample face</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Each of these astronauts is in several photos of this album.</p>
+          <ul className="mt-4 grid grid-cols-4 gap-2 sm:max-w-lg sm:gap-3">
+            {SAMPLE_FACES.map((s) => (
               <li key={s.src}>
                 <button
                   type="button"
@@ -104,13 +99,15 @@ export function SelfieStep({
                     <img src={s.src} alt="" className="h-full w-full object-cover" />
                   </span>
                   <span className="mt-1.5 block text-sm leading-tight font-medium">{s.name}</span>
-                  <span className="block text-xs text-muted-foreground">{s.note}</span>
                 </button>
               </li>
             ))}
           </ul>
-          <h2 className="mt-8 border-t pt-6 font-semibold">Or use your own</h2>
-          <p className="mt-1 text-sm text-muted-foreground">You are not in this album, so expect no matches.</p>
+          <h2 className="mt-8 border-t pt-6 font-semibold">Or use your own selfie</h2>
+          <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            Your selfie only matches photos you are in. You are not in this NASA album, so expect no matches here.
+            To find yourself, create your own event and upload a few group photos with you in them.
+          </p>
         </div>
       )}
 

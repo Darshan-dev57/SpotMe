@@ -286,9 +286,12 @@ evidence would make it worth revisiting. Numbers come from the files in `eval/ou
 
 ## 20. A public sample event with public domain photos
 
-- **Choice:** with `spotme.sample.enabled`, the app keeps one published sample event filled with 36 photos of the
-  SpaceX Crew Dragon launch week from the NASA Image and Video Library. Each visitor gets a personal invite
-  (rate limited per address) and can try official NASA portraits as sample selfies.
+- **Choice:** with `spotme.sample.enabled`, the app keeps one published sample event filled with 37 photos of
+  NASA's SpaceX Crew-1 mission from the NASA Image and Video Library, where each of the four astronauts appears
+  in 9 photos. Each visitor gets a personal invite (rate limited per address). The home page lets a visitor
+  tap one of the four astronauts (a portrait cropped from a NASA photo that is not in the album) and shows the
+  whole album with that person's photos outlined. Every photo of the sample event is shared with visitors, and
+  a new event title means a new photo set: the old sample event is expired and a fresh one is made.
 - **Why:** visitors can try the whole guest flow without signing up, and NASA imagery is generally not
   subject to copyright in the United States. LFW, used for measurement, has no such licence statement and is
   kept out of the repository and the sample event.

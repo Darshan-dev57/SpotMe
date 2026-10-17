@@ -2,6 +2,15 @@
 
 All notable changes to SpotMe. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+- The home page explains the product in plain words: a headline, three steps, who it is for and a short privacy note.
+- The sample event is now 37 NASA photos of the Crew-1 mission. Visitors tap one of the four astronauts on the
+  home page and see the whole album with that person's photos outlined.
+- The sample event explains that a visitor's own selfie only finds photos they are in, and points to creating
+  an event to try it with their own photos.
+
 ## [1.0.0] - 2026-10-11
 
 First complete release.
